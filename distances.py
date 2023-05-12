@@ -1,6 +1,6 @@
 import googlemaps
 import openpyxl
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 
 
 gmaps = googlemaps.Client(key='AIzaSyDDgmthv161tSfmFVmglxlEuJsxn7WnH9A')
