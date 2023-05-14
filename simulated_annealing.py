@@ -1,31 +1,50 @@
+import copy
+import random
 import numpy as np
-from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY
+from numpy.random import rand
+
+from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY, NODES, INITIAL_TEMP, ITERATIONS
 from nodes import Node
+from numpy import exp
 
 
-def objective(x: np.ndarray):
+def create_boolean_matrix(tours: list[list[any]]):
+    n = max(max(tour) for tour in tours) + 1
+    matrix = np.zeros((n, n), dtype=int)
+
+    for tour in tours:
+        for i in range(len(tour) - 1):
+            node1 = tour[i]
+            node2 = tour[i + 1]
+            matrix[node1][node2] = 1
+
+    return matrix
+
+
+def objective(tours: list[list[any]]):
+    x = create_boolean_matrix(tours)
     objective_value = x * DISTANCE_MATRIX
 
     return np.sum(objective_value)
 
 
-def check_visitation(tours: list[list[any]], nodes: list[Node]):
+def is_visitation(tours: list[list[any]], nodes: list[Node]):
     # Flatten the tours list and convert to a set for O(1) lookup time
     visited_nodes = set(node for tour in tours for node in tour)
 
     # Check that each node (except for node 0) appears in the visited set
     for node in nodes:
-        if node.id != 0 and node.id not in visited_nodes:
+        if node.id not in visited_nodes and node.id != 0:
             return False  # Node was not visited
 
     # Check that no node appears more than once
-    if len(visited_nodes) != len(nodes) - 1:
+    if len(visited_nodes) != len(nodes):
         return False  # Some nodes were visited more than once
 
     return True  # All nodes were visited exactly once
 
 
-def flow_conservation(tours: list[list[int]]) -> bool:
+def is_flow_conservation(tours: list[list[int]]) -> bool:
     # Create a dictionary to count how many times each node is visited
     visit_counts = {node_id: 0 for tour in tours for node_id in tour}
 
@@ -34,15 +53,15 @@ def flow_conservation(tours: list[list[int]]) -> bool:
         for node_id in tour:
             visit_counts[node_id] += 1
 
-        # Check that all nodes except for the depot are visited exactly once
-        for node_id, count in visit_counts.items():
-            if node_id != 0 and count != 1:
-                return False
+    # Check that all nodes except for the depot are visited exactly once
+    for node_id, count in visit_counts.items():
+        if count != 1 and node_id != 0:
+            return False
 
     return True  # Flow conservation condition satisfied
 
 
-def vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
+def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
     for tour in tours:
         tour_demand = sum(nodes[node].demand for node in tour)
         if tour_demand > VEHICLE_CAPACITY:
@@ -50,29 +69,79 @@ def vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
     return True
 
 
-def start_at_depot(tours: list[list[any]]):
+def starts_at_depot(tours: list[list[any]]):
     for tour in tours:
         if tour[0] != 0:
             return False
     return True
 
 
-def end_at_depot(tours: list[list[any]]):
+def ends_at_depot(tours: list[list[any]]):
     for tour in tours:
         if tour[-1] != 0:
             return False
     return True
 
 
-def check_feasibility(tours: list[list[any]], nodes: list[Node]):
-    return check_visitation(tours, nodes) and flow_conservation() and vehicle_capacity(tours, nodes) and start_at_depot(tours) and end_at_depot(tours)
+def is_feasible(tours: list[list[any]], nodes: list[Node]):
+    return is_visitation(tours, nodes) and is_flow_conservation(tours) and is_within_vehicle_capacity(tours, nodes) and starts_at_depot(tours) and ends_at_depot(tours)
 
 
-def simulated_annealing(tours: list[list[any]]):
-    pass
+def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: callable, initial_temperature: int, iterations: int):
+    best_objective_function_value = objective(tours)
+    current_tours, current_tours_value = tours, best_objective_function_value
+    i = 0
+
+    while i < iterations:
+        # Randomly select an index of the tours
+        randomly_selected_extraction_tour_index = random.randrange(len(current_tours))
+        # Randomly select a node (NOT NODE INDEX!) from the randomly selected tour
+        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index] if node != 0])
+
+        candidate_tours = copy.deepcopy(current_tours)
+        candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
+        # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
+        candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
+
+        # Add an empty tour
+        candidate_tours.append([0, 0])
+
+        randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
+        if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
+            insertion_index = random.randint(1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 2)
+        else:
+            insertion_index = 1
+
+        candidate_tours[randomly_selected_insertion_tour_index].insert(insertion_index, random_node)
+        # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
+        candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
+
+        if is_feasible(candidate_tours, nodes):
+            candidate_tours_value = objective(candidate_tours)
+
+            # Should this be a LESS or LESSEQUAL?
+            if candidate_tours_value <= current_tours_value:
+                # Update new best tour
+                tours, best_objective_function_value = candidate_tours, candidate_tours_value
+                print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
+
+                # Possible acceptance based on Metropolis criterion
+                difference = candidate_tours_value - current_tours_value
+
+                t = initial_temperature / float(i + 1)
+
+                metropolis = exp(-difference / t)
+
+                if difference < 0 or rand() < metropolis:
+                    current_tours, current_tours_value = candidate_tours, candidate_tours_value
+
+                i += 1
+        else:
+            continue
+
+    return [best_objective_function_value, tours]
 
 
+simulated_annealing([[0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 0]], NODES, objective, INITIAL_TEMP, 10)
 
-
-
-
+# [0, 1, 2, 4, 0], [0, 3, 0]

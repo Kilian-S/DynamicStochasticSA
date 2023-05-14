@@ -1,8 +1,10 @@
 import numpy as np
 
 # Simulated annealing algorithm
-INITIAL_TEMP = 1000
+from nodes import Node
 
+INITIAL_TEMP = 10
+ITERATIONS = 1000
 
 # VRP parameters
 VEHICLE_CAPACITY = 6000
@@ -14,3 +16,5 @@ DISTANCE_MATRIX = np.array([
     [20, 25, 30, 0,  4],
     [20, 14, 30, 30, 0]
 ])
+
+NODES = [Node(0, 0), Node(1, 2300), Node(2, 3300), Node(3, 5000), Node(4, 200)]

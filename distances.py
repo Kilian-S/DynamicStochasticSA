@@ -75,7 +75,6 @@ def write_distance_matrix_to_excel(distance_matrix, file_name, sheet_name):
 # write_distance_matrix_to_excel(matrix, "distances.xlsx", "Sheet2")
 
 
-print("HI")
 
 
 

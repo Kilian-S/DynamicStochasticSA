@@ -28,4 +28,4 @@ def create_nodes(f):
     return nodes
 
 
-print(create_nodes("distances.xlsx")[10])
+
