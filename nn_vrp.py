@@ -1,5 +1,7 @@
 import numpy as np
 
+from global_parameters import DISTANCE_MATRIX
+
 
 def compute_tour_distance(tour, distance_matrix):
     return sum(distance_matrix[tour[i]][tour[i + 1]] for i in range(len(tour) - 1)) + distance_matrix[tour[-1]][tour[0]]
@@ -31,15 +33,7 @@ def nearest_neighbour_vrp(distance_matrix, max_stops):
     return tours
 
 
-distance_matrix = [
-    [0, 10, 15, 20, 12],
-    [10, 0, 35, 25, 44],
-    [15, 35, 0, 30, 10],
-    [20, 25, 30, 0,  4],
-    [20, 14, 30, 30, 0]
-]
-
-print(nearest_neighbour_vrp(distance_matrix, 3))
+print(nearest_neighbour_vrp(DISTANCE_MATRIX, 3))
 
 
 

@@ -19,7 +19,7 @@ def create_nodes(f):
 
     for row in range(2, sheet.max_row + 1):
         id = row-2
-        demand = sheet.cell(row=row, column=2).value
+        demand = sheet.cell(row=row, column=3).value
 
         # Create a Location object and append it to the list
         node = Node(id, demand)
@@ -28,4 +28,4 @@ def create_nodes(f):
     return nodes
 
 
-print(create_nodes("distances.xlsx"))
+print(create_nodes("distances.xlsx")[10])
