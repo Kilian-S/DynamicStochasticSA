@@ -3,7 +3,7 @@ import random
 import numpy as np
 from numpy.random import rand
 
-from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY, NODES, INITIAL_TEMP, ITERATIONS
+from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY, NODES, INITIAL_TEMP, ITERATIONS, NN_TOUR, SIMPLE_TOUR
 from nodes import Node
 from numpy import exp
 
@@ -94,6 +94,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: ca
 
     while i < iterations:
         # Randomly select an index of the tours
+        # TODO: should random extraction be dependent on number of tours or on number of nodes of a tour (normalise probability by number of non-depot nodes)? insertion?
         randomly_selected_extraction_tour_index = random.randrange(len(current_tours))
         # Randomly select a node (NOT NODE INDEX!) from the randomly selected tour
         random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index] if node != 0])
@@ -108,7 +109,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: ca
 
         randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
         if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
-            insertion_index = random.randint(1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 2)
+            insertion_index = random.randint(1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 1)
         else:
             insertion_index = 1
 
@@ -142,6 +143,14 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: ca
     return [best_objective_function_value, tours]
 
 
-simulated_annealing([[0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 0]], NODES, objective, INITIAL_TEMP, 10)
+simulated_annealing(SIMPLE_TOUR, NODES, objective, INITIAL_TEMP, ITERATIONS)
 
-# [0, 1, 2, 4, 0], [0, 3, 0]
+
+
+
+
+
+
+
+
+
