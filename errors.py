@@ -1,0 +1,2 @@
+class InfeasibilityError(Exception):
+    pass

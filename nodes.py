@@ -1,5 +1,3 @@
-import openpyxl
-import os
 from openpyxl import load_workbook
 
 
@@ -8,7 +6,7 @@ class Node:
         self.id = id  # Node ID
         self.demand = demand  # Demand of the node
 
-    def __str__(self):
+    def __repr__(self):
         return f"Node {self.id}, Demand: {self.demand}"
 
 
@@ -18,7 +16,7 @@ def create_nodes(f):
     nodes = []
 
     for row in range(2, sheet.max_row + 1):
-        id = row-2
+        id = row - 2
         demand = sheet.cell(row=row, column=3).value
 
         # Create a Location object and append it to the list
@@ -26,6 +24,3 @@ def create_nodes(f):
         nodes.append(node)
 
     return nodes
-
-
-

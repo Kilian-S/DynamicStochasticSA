@@ -1,9 +1,8 @@
 import copy
 import random
-import numpy as np
 from numpy.random import rand
-
-from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY, NODES, INITIAL_TEMP, ITERATIONS, NN_TOUR, SIMPLE_TOUR
+from errors import InfeasibilityError
+from global_parameters import *
 from nodes import Node
 from numpy import exp
 
@@ -21,9 +20,9 @@ def create_boolean_matrix(tours: list[list[any]]):
     return matrix
 
 
-def objective(tours: list[list[any]]):
+def objective(tours: list[list[any]], distance_matrix: np.array):
     x = create_boolean_matrix(tours)
-    objective_value = x * DISTANCE_MATRIX
+    objective_value = x * distance_matrix
 
     return np.sum(objective_value)
 
@@ -37,14 +36,10 @@ def is_visitation(tours: list[list[any]], nodes: list[Node]):
         if node.id not in visited_nodes and node.id != 0:
             return False  # Node was not visited
 
-    # Check that no node appears more than once
-    if len(visited_nodes) != len(nodes):
-        return False  # Some nodes were visited more than once
-
     return True  # All nodes were visited exactly once
 
 
-def is_flow_conservation(tours: list[list[int]]) -> bool:
+def is_flow_conservation(tours: list[list[any]]) -> bool:
     # Create a dictionary to count how many times each node is visited
     visit_counts = {node_id: 0 for tour in tours for node_id in tour}
 
@@ -53,10 +48,10 @@ def is_flow_conservation(tours: list[list[int]]) -> bool:
         for node_id in tour:
             visit_counts[node_id] += 1
 
-    # Check that all nodes except for the depot are visited exactly once
-    for node_id, count in visit_counts.items():
-        if count != 1 and node_id != 0:
-            return False
+    # # Check that all nodes except for the depot are visited exactly once
+    # for node_id, count in visit_counts.items():
+    #     if count != 1 and node_id != 0:
+    #         return False
 
     return True  # Flow conservation condition satisfied
 
@@ -64,7 +59,14 @@ def is_flow_conservation(tours: list[list[int]]) -> bool:
 def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
     for tour in tours:
         tour_demand = sum(nodes[node].demand for node in tour)
-        if tour_demand > VEHICLE_CAPACITY:
+        if tour_demand > VEHICLE_CAPACITY and len(tour) > 3:
+            return False
+    return True
+
+
+def is_correct_number_of_visits_set(nodes: list[Node]):
+    for node in nodes:
+        if node.demand > VEHICLE_CAPACITY:
             return False
     return True
 
@@ -84,11 +86,16 @@ def ends_at_depot(tours: list[list[any]]):
 
 
 def is_feasible(tours: list[list[any]], nodes: list[Node]):
-    return is_visitation(tours, nodes) and is_flow_conservation(tours) and is_within_vehicle_capacity(tours, nodes) and starts_at_depot(tours) and ends_at_depot(tours)
+    return is_visitation(tours, nodes) and is_flow_conservation(tours) and is_within_vehicle_capacity(tours, nodes) and is_correct_number_of_visits_set(nodes) and starts_at_depot(
+        tours) and ends_at_depot(tours)
 
 
-def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: callable, initial_temperature: int, iterations: int):
-    best_objective_function_value = objective(tours)
+def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int):
+    # Check if input tour is feasible
+    if not is_feasible(tours, nodes):
+        raise InfeasibilityError
+
+    best_objective_function_value = objective(tours, distance_matrix)
     current_tours, current_tours_value = tours, best_objective_function_value
     i = 0
 
@@ -118,7 +125,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: ca
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
 
         if is_feasible(candidate_tours, nodes):
-            candidate_tours_value = objective(candidate_tours)
+            candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
             if candidate_tours_value <= current_tours_value:
@@ -143,7 +150,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], objective: ca
     return [best_objective_function_value, tours]
 
 
-simulated_annealing(SIMPLE_TOUR, NODES, objective, INITIAL_TEMP, ITERATIONS)
+#simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
 
 
 

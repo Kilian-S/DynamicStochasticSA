@@ -15,7 +15,7 @@ DISTANCE_MATRIX = np.array([
     [20, 14, 30, 30, 0]
 ])
 
-NODES = [Node(0, 0), Node(1, 2300), Node(2, 3300), Node(3, 5000), Node(4, 200)]
+NODES = [Node(0, 0), Node(1, 6300), Node(2, 3300), Node(3, 5000), Node(4, 200)]
 
 NN_TOUR = [[0, 1, 2, 4, 0], [0, 3, 0]]
 
