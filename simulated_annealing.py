@@ -147,7 +147,8 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
         else:
             continue
 
-    return [best_objective_function_value, tours]
+    # TODO: Return type of best_objective_function_value is a numpy float
+    return best_objective_function_value, tours
 
 
 #simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)

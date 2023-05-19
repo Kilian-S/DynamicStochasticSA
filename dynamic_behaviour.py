@@ -1,3 +1,5 @@
+import copy
+
 from global_parameters import *
 from nodes import Node
 from simulated_annealing import objective, simulated_annealing
@@ -92,15 +94,70 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
     nodes = expand_nodes(nodes, required_tours, vehicle_capacity)
 
     # Create initial solution
-    tours = create_initial_solution(nodes)
+    current_tours = create_initial_solution(nodes)
 
-    simulated_annealing(tours, nodes, distance_matrix, objective, initial_temperature, iterations)
+    current_tours_value, current_tours = simulated_annealing(current_tours, nodes, distance_matrix, objective, initial_temperature, iterations)
+
+    # All nodes are unvisited (we exclude the depot). We assume that there are at least as many trucks as there are routes in the first SA solution
+    unvisited_nodes = copy.deepcopy(nodes[1:])
+    original_tours = copy.deepcopy(current_tours)
+    original_tour_indices = [0] * len(original_tours)
+    completed_original_tours = [[]]
+    traversal_state = [[0] for _ in original_tours]
+
+    i = 1
+
+    while unvisited_nodes:
+        # Traverse each tour
+        for traversal_tour_index, original_tour in enumerate(original_tours):
+            # If the tour has ended, skip
+            if i >= len(original_tour):
+                continue
+
+            next_node = original_tour[i]
+
+            if next_node != 0:
+                traversal_state[traversal_tour_index].append(next_node)
+                unvisited_nodes = [node for node in unvisited_nodes if node.id != next_node]
+
+
+
+
+
+
+
+
+
+                # Necessary so that all tours end with node 0
+                if not unvisited_nodes:
+                    traversal_state[traversal_tour_index].append(original_tour[i+1])
+            else:
+                traversal_state[traversal_tour_index].append(next_node)
+        i += 1
+
+
+
+
+    print(traversal_state)
+    print(unvisited_nodes)
+
+
+
+
 
 
 
 
 
 dynamic_sa(NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY)
+
+
+
+
+
+
+
+
 
 
 
