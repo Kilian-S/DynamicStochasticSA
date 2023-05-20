@@ -181,16 +181,18 @@ def determine_lock_indices(tours: list[list[any]], traversal_state: list[list[an
 
 
 def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int,
-                                                 iterations: int, traversal_state: list[list[any]]):
+                                                 iterations: int, traversal_states: list[list[any]]):
     if not is_feasible(tours, nodes):
         raise InfeasibilityError
 
-    if not is_traversal_ordered_subset_of_tours(tours, traversal_state):
+    if not is_traversal_ordered_subset_of_tours(tours, traversal_states):
         raise IncorrectTraversalError
 
     best_objective_function_value = objective(tours, distance_matrix)
     current_tours, current_tours_value = tours, best_objective_function_value
-    current_lock_indices = determine_lock_indices(tours, traversal_state)
+
+    current_traversal_states = traversal_states
+    current_lock_indices = determine_lock_indices(tours, traversal_states)
 
     i = 0
 
@@ -206,26 +208,33 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index][current_lock_indices[randomly_selected_extraction_tour_index] + 1:] if node != 0])
         candidate_tours = copy.deepcopy(current_tours)
         candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
+
+        candidate_traversal_states = copy.deepcopy(current_traversal_states)
+        candidate_lock_indices = copy.deepcopy(current_lock_indices)
+
         # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
         tmp = len(candidate_tours)
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
+        candidate_traversal_states = [candidate_traversal_state for candidate_traversal_state in candidate_traversal_states if len(candidate_traversal_state) > 1]
 
         # Delete lock_index entry in the case that a node from a [0,n,0] unlocked tour was selected. Maintains order of lock_index
         if tmp - len(candidate_tours):
             candidate_tours.append([0, 0])
-            del current_lock_indices[randomly_selected_extraction_tour_index]
+            del candidate_lock_indices[randomly_selected_extraction_tour_index]
+            candidate_lock_indices.append(0)
         else:
             # Add an empty tour to the end of candidate_tours
             candidate_tours.append([0, 0])
+            candidate_lock_indices.append(0)
 
         # Randomly select an index of the tours for inserting the randomly selected node. Continue selecting until an uncompleted tour is found.
         while True:
             randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
-            if current_lock_indices[randomly_selected_insertion_tour_index]+1 < len(current_tours[randomly_selected_insertion_tour_index]):
+            if candidate_lock_indices[randomly_selected_insertion_tour_index]+1 < len(current_tours[randomly_selected_insertion_tour_index]):
                 break
 
         if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
-            insertion_index = random.randint(current_lock_indices[randomly_selected_insertion_tour_index]+1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 1)
+            insertion_index = random.randint(candidate_lock_indices[randomly_selected_insertion_tour_index]+1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 1)
         else:
             insertion_index = 1
 
@@ -234,9 +243,9 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         tmp = len(candidate_tours)
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
 
-        # If no empty tours were removed, that means that a new tour was created. current_lock_indices must be updated
-        if tmp - len(candidate_tours) == 0:
-            current_lock_indices.append(0)
+        # If empty tours were removed, that means that no new tours were created. current_lock_indices must be reverted
+        if tmp - len(candidate_tours):
+            del candidate_lock_indices[-1]
 
         if is_feasible(candidate_tours, nodes):
             candidate_tours_value = objective(candidate_tours, distance_matrix)
@@ -245,7 +254,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             if candidate_tours_value <= current_tours_value:
                 # Update new best tour
                 tours, best_objective_function_value = candidate_tours, candidate_tours_value
-                print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
+                print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours, )
 
                 # Possible acceptance based on Metropolis criterion
                 difference = candidate_tours_value - current_tours_value
