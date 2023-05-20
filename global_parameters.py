@@ -2,7 +2,7 @@ import numpy as np
 from nodes import Node
 
 INITIAL_TEMP = 10
-ITERATIONS = 100
+ITERATIONS = 10
 
 # VRP parameters
 VEHICLE_CAPACITY = 6000
@@ -15,10 +15,11 @@ DISTANCE_MATRIX = np.array([
     [20, 14, 30, 30, 0]
 ])
 
-NODES = [Node(0, 0), Node(1, 6300), Node(2, 3300), Node(3, 5000), Node(4, 200)]
+NODES = [Node(0, 0), Node(1, 2300), Node(2, 3300), Node(3, 5000), Node(4, 200)]
 
 ACTUAL_DEMAND = {0: 0, 1: 6000, 2: 3300, 3: 2000, 4: 200}
 
 NN_TOUR = [[0, 1, 2, 4, 0], [0, 3, 0]]
 
 SIMPLE_TOUR = [[0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 0]]
+SIMPLE_TOUR_TRAVERSAL_STATE = [[0, 1, 0], [0], [0, 3], [0, 4]]

@@ -1,7 +1,7 @@
 import copy
 import random
 from numpy.random import rand
-from errors import InfeasibilityError
+from errors import *
 from global_parameters import *
 from nodes import Node
 from numpy import exp
@@ -151,11 +151,122 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
     return best_objective_function_value, tours
 
 
+def is_traversal_ordered_subset_of_tours(tours: list[list[any]], traversal_state: list[list[any]]):
+    if len(tours) != len(traversal_state):
+        return False
+
+    for tour, traversal in zip(tours, traversal_state):
+        if len(traversal) > len(tour):
+            return False
+        for i in range(len(traversal)):
+            if tour[i] != traversal[i]:
+                return False
+    return True
+
+
+def determine_lock_indices(tours: list[list[any]], traversal_state: list[list[any]]):
+    """
+    Determines for each tour the index of the node up to (and including) which that tour is locked.
+
+    An index of 0 means that the first node is locked (as is always the case with the depot). An index of 1 means that the depot and the the first node in the tour are locked.
+    Locked nodes cannot be visited again, and no nodes can be placed between two locked nodes.
+
+    :param tours: Complete and feasible list of tours
+    :param traversal_state: current traversal state of each tour, tour 1 in tours corresponds to tour 1 in traversal_state
+    :return: list[int]
+    """
+
+    lock_indices = [len(traversal) - 1 for traversal in traversal_state]
+    return lock_indices
+
+
+def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int,
+                                                 iterations: int, traversal_state: list[list[any]]):
+    if not is_feasible(tours, nodes):
+        raise InfeasibilityError
+
+    if not is_traversal_ordered_subset_of_tours(tours, traversal_state):
+        raise IncorrectTraversalError
+
+    best_objective_function_value = objective(tours, distance_matrix)
+    current_tours, current_tours_value = tours, best_objective_function_value
+    current_lock_indices = determine_lock_indices(tours, traversal_state)
+
+    i = 0
+
+    while i < iterations:
+        # Randomly select an index of the tours. If the tour is completely locked, select a new index until this is not the case
+        # TODO: should random extraction be dependent on number of tours or on number of nodes of a tour (normalise probability by number of non-depot nodes)? insertion?
+        while True:
+            randomly_selected_extraction_tour_index = random.randrange(len(current_tours))
+            if current_lock_indices[randomly_selected_extraction_tour_index] < len(current_tours[randomly_selected_extraction_tour_index])-2:
+                break
+
+        # Randomly select a node (NOT NODE INDEX!) from lock index onwards from the randomly selected tour
+        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index][current_lock_indices[randomly_selected_extraction_tour_index] + 1:] if node != 0])
+        candidate_tours = copy.deepcopy(current_tours)
+        candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
+        # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
+        tmp = len(candidate_tours)
+        candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
+
+        # Delete lock_index entry in the case that a node from a [0,n,0] unlocked tour was selected. Maintains order of lock_index
+        if tmp - len(candidate_tours):
+            candidate_tours.append([0, 0])
+            del current_lock_indices[randomly_selected_extraction_tour_index]
+        else:
+            # Add an empty tour to the end of candidate_tours
+            candidate_tours.append([0, 0])
+
+        # Randomly select an index of the tours for inserting the randomly selected node. Continue selecting until an uncompleted tour is found.
+        while True:
+            randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
+            if current_lock_indices[randomly_selected_insertion_tour_index]+1 < len(current_tours[randomly_selected_insertion_tour_index]):
+                break
+
+        if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
+            insertion_index = random.randint(current_lock_indices[randomly_selected_insertion_tour_index]+1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 1)
+        else:
+            insertion_index = 1
+
+        candidate_tours[randomly_selected_insertion_tour_index].insert(insertion_index, random_node)
+        # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
+        tmp = len(candidate_tours)
+        candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
+
+        # If no empty tours were removed, that means that a new tour was created. current_lock_indices must be updated
+        if tmp - len(candidate_tours) == 0:
+            current_lock_indices.append(0)
+
+        if is_feasible(candidate_tours, nodes):
+            candidate_tours_value = objective(candidate_tours, distance_matrix)
+
+            # Should this be a LESS or LESSEQUAL?
+            if candidate_tours_value <= current_tours_value:
+                # Update new best tour
+                tours, best_objective_function_value = candidate_tours, candidate_tours_value
+                print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
+
+                # Possible acceptance based on Metropolis criterion
+                difference = candidate_tours_value - current_tours_value
+
+                t = initial_temperature / float(i + 1)
+
+                metropolis = exp(-difference / t)
+
+                if difference < 0 or rand() < metropolis:
+                    current_tours, current_tours_value = candidate_tours, candidate_tours_value
+
+                i += 1
+        else:
+            continue
+
+    # TODO: Return type of best_objective_function_value is a numpy float
+    return best_objective_function_value, tours
+
+
 #simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
-
-
-
-
+simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
 
 
 
