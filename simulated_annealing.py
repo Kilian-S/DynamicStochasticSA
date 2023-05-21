@@ -164,7 +164,7 @@ def is_traversal_ordered_subset_of_tours(tours: list[list[any]], traversal_state
     return True
 
 
-def determine_lock_indices(tours: list[list[any]], traversal_states: list[list[any]]):
+def determine_lock_indices(traversal_states: list[list[any]]):
     """
     Determines for each tour the index of the node up to (and including) which that tour is locked.
 
@@ -192,7 +192,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
     current_tours, current_tours_value = tours, best_objective_function_value
 
     current_traversal_states = traversal_states
-    current_lock_indices = determine_lock_indices(tours, traversal_states)
+    current_lock_indices = determine_lock_indices(traversal_states)
 
     i = 0
 
@@ -215,20 +215,21 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
         tmp = len(candidate_tours)
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
-        candidate_traversal_states = [candidate_traversal_state for candidate_traversal_state in candidate_traversal_states if len(candidate_traversal_state) > 1]
 
+        if tmp - len(candidate_tours):
+            del candidate_traversal_states[randomly_selected_extraction_tour_index]
 
         # Add an empty tour
         candidate_tours.append([0, 0])
         candidate_traversal_states.append([0])
 
         # Update candidate_lock_indices
-        candidate_lock_indices = determine_lock_indices(candidate_tours, candidate_traversal_states)
+        candidate_lock_indices = determine_lock_indices(candidate_traversal_states)
 
         # Randomly select an index of the tours for inserting the randomly selected node. Continue selecting until an uncompleted tour is found.
         while True:
             randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
-            if candidate_lock_indices[randomly_selected_insertion_tour_index]+1 < len(current_tours[randomly_selected_insertion_tour_index]):
+            if candidate_lock_indices[randomly_selected_insertion_tour_index]+1 < len(candidate_tours[randomly_selected_insertion_tour_index]):
                 break
 
         if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
@@ -238,8 +239,11 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
         candidate_tours[randomly_selected_insertion_tour_index].insert(insertion_index, random_node)
         # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
+        tmp = len(candidate_tours)
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
-        candidate_traversal_states = [candidate_traversal_state for candidate_traversal_state in candidate_traversal_states if len(candidate_traversal_state) > 1]
+
+        if tmp - len(candidate_tours):
+            del candidate_traversal_states[-1]
 
         if is_feasible(candidate_tours, nodes):
             candidate_tours_value = objective(candidate_tours, distance_matrix)
@@ -248,6 +252,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             if candidate_tours_value <= current_tours_value:
                 # Update new best tour
                 tours, best_objective_function_value, traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
+                current_lock_indices = determine_lock_indices(candidate_traversal_states)
                 print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
                 # Possible acceptance based on Metropolis criterion
@@ -259,6 +264,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
                 if difference < 0 or rand() < metropolis:
                     current_tours, current_tours_value, current_traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
+                    current_lock_indices = determine_lock_indices(candidate_traversal_states)
 
                 i += 1
         else:
