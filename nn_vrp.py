@@ -26,7 +26,7 @@ def nearest_neighbour_vrp(distance_matrix: list[list[int]], nodes: list[Node]) -
 
             for node_id in unvisited_nodes:
                 node = next(node for node in nodes if node.id == node_id)  # Get the node by id
-                if node.demand + load <= VEHICLE_CAPACITY and distance_matrix[current_node][node.id] < min_distance:
+                if node.expected_demand + load <= VEHICLE_CAPACITY and distance_matrix[current_node][node.id] < min_distance:
                     next_node = node_id
                     min_distance = distance_matrix[current_node][node.id]
 
@@ -36,7 +36,7 @@ def nearest_neighbour_vrp(distance_matrix: list[list[int]], nodes: list[Node]) -
                 break
             else:  # Visit the next node
                 tour.append(next_node)
-                load += next(node for node in nodes if node.id == next_node).demand
+                load += next(node for node in nodes if node.id == next_node).expected_demand
                 unvisited_nodes.remove(next_node)
 
     return tours

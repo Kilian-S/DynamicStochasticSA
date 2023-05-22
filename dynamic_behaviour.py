@@ -12,14 +12,14 @@ def calculate_required_tours(nodes: list[Node], vehicle_capacity: int):
         if node.id == 0:
             required_tours_dict[node.id] = 0
         # If the node is a non-depot node with zero demand
-        elif node.demand == 0:
+        elif node.expected_demand == 0:
             required_tours_dict[node.id] = 1
         # If the node is a non-depot node with demand between 1 and vehicle capacity
-        elif 0 < node.demand <= vehicle_capacity:
+        elif 0 < node.expected_demand <= vehicle_capacity:
             required_tours_dict[node.id] = 1
         # If the node has a demand that exceeds the vehicle capacity
         else:
-            required_tours_dict[node.id] = (node.demand // vehicle_capacity) + (1 if node.demand % vehicle_capacity else 0)
+            required_tours_dict[node.id] = (node.expected_demand // vehicle_capacity) + (1 if node.expected_demand % vehicle_capacity else 0)
 
     return required_tours_dict
 
@@ -51,7 +51,7 @@ def expand_nodes(nodes: list[Node], required_tours_dict: dict, vehicle_capacity:
     expanded_nodes = []
     new_id = 0  # Counter for the new IDs
     for node_id, required_tours in required_tours_dict.items():
-        node_demand = nodes[node_id].demand  # Get the demand of the node
+        node_demand = nodes[node_id].expected_demand  # Get the demand of the node
 
         # if the node has to be visited more than once
         if required_tours > 1:

@@ -15,7 +15,7 @@ DISTANCE_MATRIX = np.array([
     [20, 14, 30, 30, 0]
 ])
 
-NODES = [Node(0, 0), Node(1, 2300), Node(2, 3300), Node(3, 5000), Node(4, 200)]
+NODES = [Node(0, 0, 0), Node(1, 2300, 10), Node(2, 3300, 3300), Node(3, 5000, 1000), Node(4, 200, 3000)]
 
 ACTUAL_DEMAND = {0: 0, 1: 6000, 2: 3300, 3: 2000, 4: 200}
 

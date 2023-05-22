@@ -58,7 +58,7 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
 
 def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
     for tour in tours:
-        tour_demand = sum(nodes[node].demand for node in tour)
+        tour_demand = sum(nodes[node].expected_demand for node in tour)
         if tour_demand > VEHICLE_CAPACITY and len(tour) > 3:
             return False
     return True
@@ -66,7 +66,7 @@ def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
 
 def is_correct_number_of_visits_set(nodes: list[Node]):
     for node in nodes:
-        if node.demand > VEHICLE_CAPACITY:
+        if node.expected_demand > VEHICLE_CAPACITY:
             return False
     return True
 
