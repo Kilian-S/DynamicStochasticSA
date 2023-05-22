@@ -133,9 +133,9 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
                 tours, best_objective_function_value = candidate_tours, candidate_tours_value
                 print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
 
+                # TODO: De-indent every line below this point and set it to a LESS
                 # Possible acceptance based on Metropolis criterion
                 difference = candidate_tours_value - current_tours_value
-
                 t = initial_temperature / float(i + 1)
 
                 metropolis = exp(-difference / t)
@@ -210,7 +210,6 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
 
         candidate_traversal_states = copy.deepcopy(current_traversal_states)
-        candidate_lock_indices = copy.deepcopy(current_lock_indices)
 
         # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
         tmp = len(candidate_tours)
@@ -255,9 +254,10 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
                 current_lock_indices = determine_lock_indices(candidate_traversal_states)
                 print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
+                # TODO: De-indent every line below this point and set it to a LESS
                 # Possible acceptance based on Metropolis criterion
                 difference = candidate_tours_value - current_tours_value
-
+                print(difference)
                 t = initial_temperature / float(i + 1)
 
                 metropolis = exp(-difference / t)
@@ -274,8 +274,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
     return best_objective_function_value, tours
 
 
-#simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
-simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
+simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
+#simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
 
 
 

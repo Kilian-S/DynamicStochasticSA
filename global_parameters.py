@@ -2,7 +2,7 @@ import numpy as np
 from nodes import Node
 
 INITIAL_TEMP = 10
-ITERATIONS = 10
+ITERATIONS = 100
 
 # VRP parameters
 VEHICLE_CAPACITY = 6000
@@ -22,4 +22,4 @@ ACTUAL_DEMAND = {0: 0, 1: 6000, 2: 3300, 3: 2000, 4: 200}
 NN_TOUR = [[0, 1, 2, 4, 0], [0, 3, 0]]
 
 SIMPLE_TOUR = [[0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 0]]
-SIMPLE_TOUR_TRAVERSAL_STATE = [[0, 1, 0], [0], [0, 3], [0, 4]]
+SIMPLE_TOUR_TRAVERSAL_STATE = [[0], [0], [0], [0]]
