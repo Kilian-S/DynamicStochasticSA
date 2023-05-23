@@ -53,6 +53,7 @@ def expand_nodes(nodes: list[Node], required_tours_dict: dict, vehicle_capacity:
     for node_id, required_tours in required_tours_dict.items():
         node_demand = nodes[node_id].expected_demand  # Get the demand of the node
 
+
         # if the node has to be visited more than once
         if required_tours > 1:
             # calculate the demand for each visit
@@ -95,7 +96,6 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
 
     # Create initial solution
     current_tours = create_initial_solution(nodes)
-
     current_tours_value, current_tours = simulated_annealing(current_tours, nodes, distance_matrix, objective, initial_temperature, iterations)
 
     # All nodes are unvisited (we exclude the depot). We assume that there are at least as many trucks as there are routes in the first SA solution
@@ -133,6 +133,8 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
                     traversal_state[traversal_tour_index].append(original_tour[i+1])
             else:
                 traversal_state[traversal_tour_index].append(next_node)
+
+
         i += 1
 
 

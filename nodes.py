@@ -2,9 +2,12 @@ from openpyxl import load_workbook
 
 
 class Node:
-    def __init__(self, id, expected_demand, actual_demand):
+    def __init__(self, id, expected_demand, actual_demand=None):
         self.id = id  # Node ID
         self.expected_demand = expected_demand  # Demand of the node
+
+        if actual_demand is None:
+            self.actual_demand = 0
 
     def __repr__(self):
         return f"Node {self.id}, Demand: {self.expected_demand}"
