@@ -2,7 +2,7 @@ import random
 
 from numpy.random import rand
 from global_parameters import *
-from nodes import Node
+from inputs.nodes import Node
 
 
 list = [0,1,2,3]

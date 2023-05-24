@@ -1,5 +1,5 @@
 from global_parameters import DISTANCE_MATRIX, VEHICLE_CAPACITY, NODES
-from nodes import Node
+from inputs.nodes import Node
 
 
 def calculate_total_distance(tours: list[list[int]], distance_matrix: list[list[int]]) -> int:

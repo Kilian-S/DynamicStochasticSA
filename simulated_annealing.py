@@ -1,9 +1,9 @@
 import copy
 import random
 from numpy.random import rand
-from errors import *
+from errors.errors import *
 from global_parameters import *
-from nodes import Node
+from inputs.nodes import Node
 from numpy import exp
 
 

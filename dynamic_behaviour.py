@@ -1,7 +1,6 @@
 import copy
-
 from global_parameters import *
-from nodes import Node
+from inputs.nodes import Node
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
 
 
@@ -84,6 +83,10 @@ def create_initial_solution(nodes: list[Node]):
     return tours
 
 
+def reconcile_old_with_new_SA_solution(old_tours: list[list[any]], old_traversal_states: list[list[any]], new_tours: list[list[any]], new_traversal_states: list[list[any]]):
+    pass
+
+
 def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity):
     # Take care of nodes that have demand > maximum vehicle capacity
     required_tours = calculate_required_tours(nodes, vehicle_capacity)
@@ -97,16 +100,15 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
     # Create initial solution
     current_tours = create_initial_solution(nodes)
     current_tours_value, current_tours = simulated_annealing(current_tours, nodes, distance_matrix, objective, initial_temperature, iterations)
+    current_traversal_states = [[0] for _ in current_tours]
 
     # All nodes are unvisited (we exclude the depot). We assume that there are at least as many trucks as there are routes in the first SA solution
     unvisited_nodes = copy.deepcopy(nodes[1:])
     original_tours = copy.deepcopy(current_tours)
     original_tour_positional_index = [0] * len(original_tours)
     completed_original_tours = []
-    traversal_states = [[0] for _ in original_tours]
-    print(current_tours_value, current_tours, traversal_states)
 
-    while unvisited_nodes or original_tours != traversal_states:
+    while unvisited_nodes or original_tours != current_traversal_states:
         # Traverse each tour
         for i in range(0, len(original_tours)):
             # By one step
@@ -117,7 +119,7 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
             next_node_in_tour = original_tours[i][original_tour_positional_index[i]+1]
 
             # Tour has been completed
-            traversal_states[i].append(next_node_in_tour)
+            current_traversal_states[i].append(next_node_in_tour)
             if next_node_in_tour == 0:
                 completed_original_tours.append(original_tours[i])
             else:
@@ -127,11 +129,10 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
 
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
-            current_tours_value, current_tours, traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, distance_matrix, objective,
-                                                                                                            initial_temperature, iterations, traversal_states)
-        print(current_tours_value, current_tours, traversal_states)
+            new_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, distance_matrix, objective,
+                                                                                                            initial_temperature, iterations, current_traversal_states)
 
-
+            reconcile_old_with_new_SA_solution(current_tours, current_traversal_states, new_tours, new_traversal_states)
 
 
 

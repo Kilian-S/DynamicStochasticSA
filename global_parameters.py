@@ -1,5 +1,5 @@
 import numpy as np
-from nodes import Node
+from inputs.nodes import Node
 
 INITIAL_TEMP = 10
 ITERATIONS = 100
