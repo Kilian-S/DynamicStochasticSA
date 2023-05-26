@@ -3,7 +3,7 @@ import random
 from numpy.random import rand
 from errors.errors import *
 from global_parameters import *
-from inputs.nodes import Node
+from inputs.node import Node
 from numpy import exp
 
 
@@ -274,8 +274,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
 
 #simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
-x = simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
-print(x)
+# x = simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
+# print(x)
 
 
 

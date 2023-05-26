@@ -1,6 +1,9 @@
 import copy
 from global_parameters import *
-from inputs.nodes import Node
+from inputs.dynamic_distance_matrix import DynamicDistanceMatrix
+from inputs.dynamic_nodes_list import DynamicNodeList
+from inputs.node import Node
+from inputs.node_family import NodeFamily
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
 
 
@@ -46,30 +49,8 @@ def expand_distance_matrix(nodes_dict: dict, distance_matrix: np.array):
     return new_distance_matrix
 
 
-def expand_nodes(nodes: list[Node], required_tours_dict: dict, vehicle_capacity: int):
-    expanded_nodes = []
-    new_id = 0  # Counter for the new IDs
-    for node_id, required_tours in required_tours_dict.items():
-        node_demand = nodes[node_id].expected_demand  # Get the demand of the node
-
-
-        # if the node has to be visited more than once
-        if required_tours > 1:
-            # calculate the demand for each visit
-            regular_demand = vehicle_capacity
-            last_demand = node_demand % vehicle_capacity if node_demand % vehicle_capacity != 0 else vehicle_capacity
-
-            # add nodes for each visit
-            for i in range(1, required_tours):
-                expanded_nodes.append(Node(new_id, regular_demand))
-                new_id += 1
-            expanded_nodes.append(Node(new_id, last_demand))
-            new_id += 1
-        else:
-            # if the node is visited only once
-            expanded_nodes.append(Node(new_id, node_demand))
-            new_id += 1
-    return expanded_nodes
+def expand_nodes(nodes: list[Node], vehicle_capacity: int):
+    pass
 
 
 def create_initial_solution(nodes: list[Node]):
@@ -83,19 +64,17 @@ def create_initial_solution(nodes: list[Node]):
     return tours
 
 
-def reconcile_old_with_new_SA_solution(old_tours: list[list[any]], old_traversal_states: list[list[any]], new_tours: list[list[any]], new_traversal_states: list[list[any]]):
-    pass
-
-
 def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity):
-    # Take care of nodes that have demand > maximum vehicle capacity
-    required_tours = calculate_required_tours(nodes, vehicle_capacity)
+    # Initialise node families, the dynamic node list that manages the node families, and the
+    node_families = [NodeFamily(node, vehicle_capacity) for node in nodes]
+    dynamic_distance_matrix = DynamicDistanceMatrix(distance_matrix, node_families)
+    dynamic_node_list = DynamicNodeList(node_families, vehicle_capacity)
 
-    # Amend distance matrix (add rows and columns to those nodes that need multiple tours)
-    distance_matrix = expand_distance_matrix(required_tours, distance_matrix)
+    # Get all nodes from all node families
+    nodes = dynamic_node_list.get_all_nodes()
 
-    # Expand the list of nodes
-    nodes = expand_nodes(nodes, required_tours, vehicle_capacity)
+    # Amend distance matrix
+    dynamic_distance_matrix.initialise(nodes)
 
     # Create initial solution
     current_tours = create_initial_solution(nodes)
@@ -132,7 +111,6 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
             new_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, distance_matrix, objective,
                                                                                                             initial_temperature, iterations, current_traversal_states)
 
-            reconcile_old_with_new_SA_solution(current_tours, current_traversal_states, new_tours, new_traversal_states)
 
 
 
@@ -143,7 +121,7 @@ def dynamic_sa(nodes: list[Node], distance_matrix: np.array, objective: callable
 
 
 
-dynamic_sa(NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY)
+dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY)
 
 
 
