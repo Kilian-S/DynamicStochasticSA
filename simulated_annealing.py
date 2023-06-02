@@ -1,30 +1,46 @@
 import copy
 import random
+
+import pandas as pd
 from numpy.random import rand
 from errors.errors import *
 from global_parameters import *
+from inputs.dynamic_distance_matrix import DynamicDistanceMatrix
 from inputs.node import Node
 from numpy import exp
 
 
-def create_boolean_matrix(tours: list[list[any]]):
-    n = max(max(tour) for tour in tours) + 1
-    matrix = np.zeros((n, n), dtype=int)
+def create_boolean_matrix(tours: list[list[any]]) -> pd.DataFrame:
+    # Get all unique nodes
+    nodes = sorted(list(set(node for tour in tours for node in tour)))
 
+    # Initialize the matrix with zeros
+    matrix = pd.DataFrame(0, index=nodes, columns=nodes)
+
+    # Populate the matrix
     for tour in tours:
         for i in range(len(tour) - 1):
             node1 = tour[i]
             node2 = tour[i + 1]
-            matrix[node1][node2] = 1
+            matrix.at[node1, node2] = 1
 
     return matrix
 
 
-def objective(tours: list[list[any]], distance_matrix: np.array):
+def objective(tours: list[list[any]], distance_matrix: DynamicDistanceMatrix):
     x = create_boolean_matrix(tours)
-    objective_value = x * distance_matrix
 
-    return np.sum(objective_value)
+    # Hadamard product
+    objective_value = x.multiply(distance_matrix.matrix)
+
+    return objective_value.values.sum()
+
+
+def get_node_by_id(node_id: str, nodes: list[Node]) -> Node:
+    for node in nodes:
+        if node.id == node_id:
+            return node
+    return None
 
 
 def is_visitation(tours: list[list[any]], nodes: list[Node]):
@@ -33,7 +49,7 @@ def is_visitation(tours: list[list[any]], nodes: list[Node]):
 
     # Check that each node (except for node 0) appears in the visited set
     for node in nodes:
-        if node.id not in visited_nodes and node.id != 0:
+        if node.id not in visited_nodes and node.id != '0':
             return False  # Node was not visited
 
     return True  # All nodes were visited exactly once
@@ -48,17 +64,17 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
         for node_id in tour:
             visit_counts[node_id] += 1
 
-    # # Check that all nodes except for the depot are visited exactly once
-    # for node_id, count in visit_counts.items():
-    #     if count != 1 and node_id != 0:
-    #         return False
+    # Check that all nodes except for the depot are visited exactly once
+    for node_id, count in visit_counts.items():
+        if count != 1 and node_id != '0':
+            return False
 
     return True  # Flow conservation condition satisfied
 
 
 def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
     for tour in tours:
-        tour_demand = sum(nodes[node].expected_demand for node in tour)
+        tour_demand = sum(get_node_by_id(node_id, nodes).expected_demand for node_id in tour[1:-1])
         if tour_demand > VEHICLE_CAPACITY and len(tour) > 3:
             return False
     return True
@@ -73,14 +89,14 @@ def is_correct_number_of_visits_set(nodes: list[Node]):
 
 def starts_at_depot(tours: list[list[any]]):
     for tour in tours:
-        if tour[0] != 0:
+        if tour[0] != '0':
             return False
     return True
 
 
 def ends_at_depot(tours: list[list[any]]):
     for tour in tours:
-        if tour[-1] != 0:
+        if tour[-1] != '0':
             return False
     return True
 
@@ -104,7 +120,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
         # TODO: should random extraction be dependent on number of tours or on number of nodes of a tour (normalise probability by number of non-depot nodes)? insertion?
         randomly_selected_extraction_tour_index = random.randrange(len(current_tours))
         # Randomly select a node (NOT NODE INDEX!) from the randomly selected tour
-        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index] if node != 0])
+        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index] if node != '0'])
 
         candidate_tours = copy.deepcopy(current_tours)
         candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
@@ -252,7 +268,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
                 # Update new best tour
                 tours, best_objective_function_value, traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
                 current_lock_indices = determine_lock_indices(candidate_traversal_states)
-                #print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
+                print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
                 # TODO: De-indent every line below this point and set it to a LESS
                 # Possible acceptance based on Metropolis criterion
@@ -273,7 +289,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
     return best_objective_function_value, tours, traversal_states
 
 
-#simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
+# simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
 # x = simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
 # print(x)
 

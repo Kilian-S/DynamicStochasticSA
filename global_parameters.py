@@ -1,8 +1,8 @@
 import numpy as np
-from inputs.node import Node
+from inputs.node import Node, InputNode
 
 INITIAL_TEMP = 10
-ITERATIONS = 100
+ITERATIONS = 1
 
 # VRP parameters
 VEHICLE_CAPACITY = 600
@@ -23,7 +23,7 @@ SYM_DISTANCE_MATRIX = np.array([
     [12, 44, 10, 4, 0]
 ])
 
-NODES = [Node(0, 0, 0), Node(1, 2300, 10), Node(2, 3300, 3300), Node(3, 5000, 1000), Node(4, 200, 3000)]
+NODES = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
 
 NN_TOUR = [[0, 1, 2, 4, 0], [0, 3, 0]]
 
