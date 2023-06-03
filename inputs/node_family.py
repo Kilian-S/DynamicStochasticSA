@@ -36,6 +36,7 @@ class NodeFamily:
         self.create_child_nodes(expected_trips_required, remaining_capacity)
 
     def update(self):
+        self.is_visited = True
         expected_trips_required = self.node_family_expected_demand // self.vehicle_capacity
         actual_trips_required = self.node_family_actual_demand // self.vehicle_capacity
         remaining_capacity = self.node_family_actual_demand % self.vehicle_capacity
