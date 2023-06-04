@@ -52,6 +52,10 @@ def group_node_strings_by_family_from_matrix(dynamic_distance_matrix: pd.DataFra
     return node_family_groups
 
 
+def nodes_to_ids(nodes: list[Node]):
+    return [node.id for node in nodes]
+
+
 class DynamicDistanceMatrix:
     def __init__(self, numpy_distance_matrix: np.array, node_families: list[NodeFamily]):
         assert len(node_families) == numpy_distance_matrix.shape[0] == numpy_distance_matrix.shape[1], "Node family list size must be equal to the dimensions of the distance matrix"
@@ -86,7 +90,7 @@ class DynamicDistanceMatrix:
         for matrix_node_family in matrix_node_families:
             self.split_node(matrix_node_family, len(nodes_grouped_by_family[matrix_node_family]))
 
-    def update(self, nodes: List[str]):
+    def update(self, nodes: List[Node]):
         """
             This method assumes an initialised DDM. If the input node list is identical to the row/column labels, then no change is required. If a node family has increased in size
             (more dummy nodes / trips required), then the DDM's dimensions must increase. If a node family has decreased in size, the DDM must shrink.
@@ -97,6 +101,7 @@ class DynamicDistanceMatrix:
         # TODO: Add error handling (ex. different number of node families)
 
         # 1. Create a new empty DataFrame with new nodes
+        nodes = nodes_to_ids(nodes)
         updated_matrix = pd.DataFrame(index=nodes, columns=nodes)
 
         # 2. Fill the new DataFrame with existing values
