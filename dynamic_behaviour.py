@@ -6,8 +6,6 @@ from inputs.node import Node
 from inputs.node_family import NodeFamily
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
 
-# TODO: Make unvisited_node a set, not a list
-
 
 def calculate_required_tours(nodes: list[Node], vehicle_capacity: int):
     required_tours_dict = {}
