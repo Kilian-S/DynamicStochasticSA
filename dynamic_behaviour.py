@@ -134,8 +134,8 @@ def get_ids_of_newly_added_child_nodes(tours: list[list[str]], current_nodes: li
     return newly_added_ids
 
 
-def remove_empty_tours_from_current_traversal_states(current_traversal_states: list[list[str]], removed_current_tour_indices: list[int]):
-    return [tour for i, tour in enumerate(current_traversal_states) if i not in removed_current_tour_indices]
+def remove_indices_from_list(input_list: list, removed_indices: list[int]):
+    return [item for i, item in enumerate(input_list) if i not in removed_indices]
 
 
 def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, nodes: list[Node], unvisited_nodes: set[str],
@@ -152,7 +152,7 @@ def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix
 
 def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, next_node_in_tour: str,
                                   nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[str], visited_node_family: NodeFamily,
-                                  current_traversal_states: list[list[str]]):
+                                  current_traversal_states: list[list[str]], original_tour_positional_index: list[int]):
     # Update unvisited_nodes
     updated_child_nodes = visited_node_family.child_nodes
     deleted_nodes = {node for node in nodes if node.id not in {child_node.id for child_node in updated_child_nodes} and node.id.split('.')[0] == visited_node_family.node_family_id
@@ -186,18 +186,19 @@ def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distan
     if removed_current_tour_indices != removed_original_tour_indices:
         raise IncorrectReconciliationError
 
-    current_traversal_states = remove_empty_tours_from_current_traversal_states(current_traversal_states, removed_current_tour_indices)
+    current_traversal_states = remove_indices_from_list(current_traversal_states, removed_current_tour_indices)
+    original_tour_positional_index = remove_indices_from_list(original_tour_positional_index, removed_original_tour_indices)
 
     # Update unvisited_nodes, nodes, dynamic_distance_matrix
     unvisited_nodes = {node for node in unvisited_nodes if node not in {deleted_node.id for deleted_node in deleted_nodes}}
     nodes = dynamic_node_list.get_all_nodes()
     dynamic_distance_matrix.update(nodes)
-    return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states
+    return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index
 
 
 def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList,
                                          next_node_in_tour: str, nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[str], visited_node_family: NodeFamily,
-                                         current_traversal_states: list[list[str]]):
+                                         current_traversal_states: list[list[str]], original_tour_positional_index: list[int]):
     if not visited_node_family.is_visited:
         # Node family has not been visited: Check if recalculation of children nodes based on actual demand instead of expected demand is necessary
         new_number_of_child_nodes, old_number_of_child_nodes = calculate_child_node_delta(visited_node_family)
@@ -212,14 +213,16 @@ def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic
 
         else:
             # Number of visits has decreased
-            current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states = reconcile_child_node_decrease(current_tours,
-                                                                                                                                               dynamic_distance_matrix,
-                                                                                                                                               dynamic_node_list, next_node_in_tour,
-                                                                                                                                               nodes, original_tours,
-                                                                                                                                               unvisited_nodes, visited_node_family,
-                                                                                                                                               current_traversal_states)
+            current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index = reconcile_child_node_decrease(
+                current_tours,
+                dynamic_distance_matrix,
+                dynamic_node_list, next_node_in_tour,
+                nodes, original_tours,
+                unvisited_nodes, visited_node_family,
+                current_traversal_states,
+                original_tour_positional_index)
 
-    return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states
+    return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index
 
 
 def update_loop_visitation_variables(completed_original_tours: list[list[str]], current_traversal_states: list[list[str]], i: int, next_node_in_tour: str,
@@ -270,14 +273,16 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             visited_node_family = get_node_family(get_node_family_from_child_node(next_node_in_tour), node_families)
 
             # TODO: reconcile_expected_and_actual_demand must also update current_traversal_states
-            current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states = reconcile_expected_and_actual_demand(current_tours,
-                                                                                                                                                      dynamic_distance_matrix,
-                                                                                                                                                      dynamic_node_list,
-                                                                                                                                                      next_node_in_tour, nodes,
-                                                                                                                                                      original_tours,
-                                                                                                                                                      unvisited_nodes,
-                                                                                                                                                      visited_node_family,
-                                                                                                                                                      current_traversal_states)
+            current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index = reconcile_expected_and_actual_demand(
+                current_tours,
+                dynamic_distance_matrix,
+                dynamic_node_list,
+                next_node_in_tour, nodes,
+                original_tours,
+                unvisited_nodes,
+                visited_node_family,
+                current_traversal_states,
+                original_tour_positional_index)
 
             unvisited_nodes = update_loop_visitation_variables(completed_original_tours, current_traversal_states, i, next_node_in_tour, original_tours, unvisited_nodes)
 
