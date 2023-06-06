@@ -82,7 +82,7 @@ class TestReconcileChildNodeDecrease(unittest.TestCase):
 
         current_tours = [['0', '1.2', '2.1', '0'], ['0', '1.1', '0']]
         original_tours = copy.deepcopy(current_tours)
-        unvisited_nodes = ['1.2', '2.1', '1.1']
+        unvisited_nodes = {'1.2', '2.1', '1.1'}
 
         current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes = reconcile_child_node_decrease(current_tours, ddm, dnl, next_node_in_tour, nodes, original_tours,
                                                                                                                unvisited_nodes, visited_node_family)
@@ -91,6 +91,22 @@ class TestReconcileChildNodeDecrease(unittest.TestCase):
         self.assertEqual([['0', '1.1', '2.1', '0']], current_tours)
         self.assertEqual([['0', '1.1', '2.1', '0']], original_tours)
         self.assertEqual({'1.1', '2.1',}, set(unvisited_nodes))
+
+
+class TestIntegrateNewlyAddedChildTours(unittest.TestCase):
+    def test_integrate_newly_added_child_tours(self):
+        input_nodes = [InputNode('0', 0, 0), InputNode('1', 100, 100), InputNode('2', 400, 400)]
+        vehicle_capacity = 100
+
+        ddm, dnl, node_families, nodes = initialise_dynamic_data_structures(np_distance_matrix, input_nodes, vehicle_capacity)
+        tours = [['0', '1.1', '2.1', '0'], ['0', '2.2', '2.3', '2.4', '0']]
+        traversal_states = [['0', '1.1'], ['0', '2.2', '2.3']]
+        nodes.append(Node('2.5', 100))
+        tours, traversal_states = integrate_newly_added_child_tours(tours, nodes, traversal_states)
+
+        self.assertTrue(len(tours) == 3)
+        self.assertTrue(tours[2] == ['0', '2.5', '0'])
+        self.assertTrue(traversal_states[2] == ['0'])
 
 
 

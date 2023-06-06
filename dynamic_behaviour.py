@@ -114,6 +114,15 @@ def calculate_child_node_delta(visited_node_family: NodeFamily):
     return new_number_of_child_nodes, old_number_of_child_nodes
 
 
+def get_ids_of_newly_added_child_nodes(tours: list[list[str]], current_nodes: list[Node]) -> list[str]:
+    # Flatten the tours list to a single list of node ids
+    flattened_tour_ids = [node_id for sublist in tours for node_id in sublist]
+    current_node_ids = [node.id for node in current_nodes]
+    newly_added_ids = [node_id for node_id in current_node_ids if node_id not in flattened_tour_ids]
+
+    return newly_added_ids
+
+
 def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, nodes: list[Node], unvisited_nodes: set[str],
                                   visited_node_family: NodeFamily):
     # Update unvisited_nodes
@@ -144,10 +153,6 @@ def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distan
         current_tours = remove_string_from_nested_list(current_tours, updated_next_node_in_tour)
         original_tours = remove_string_from_nested_list(original_tours, updated_next_node_in_tour)
 
-        # Remove possible empty tours
-        current_tours = remove_empty_tours(current_tours)
-        original_tours = remove_empty_tours(original_tours)
-
         # Update the tour I am currently on (replace the value of next_node_in_tour with updated_next_node_in_tour)
         current_tours = update_string_in_nested_list(current_tours, next_node_in_tour, updated_next_node_in_tour)
         original_tours = update_string_in_nested_list(original_tours, next_node_in_tour, updated_next_node_in_tour)
@@ -157,6 +162,10 @@ def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distan
     for deleted_node in deleted_nodes:
         current_tours = remove_string_from_nested_list(current_tours, deleted_node.id)
         original_tours = remove_string_from_nested_list(original_tours, deleted_node.id)
+
+    # Remove possible empty tours
+    current_tours = remove_empty_tours(current_tours)
+    original_tours = remove_empty_tours(original_tours)
 
     # Update unvisited_nodes, nodes, dynamic_distance_matrix
     unvisited_nodes = {node for node in unvisited_nodes if node not in {deleted_node.id for deleted_node in deleted_nodes}}
@@ -199,6 +208,20 @@ def update_loop_visitation_variables(completed_original_tours: list[list[str]], 
     return unvisited_nodes
 
 
+def integrate_newly_added_child_tours(tours: list[list[str]], nodes: list[Node], traversal_states: list[list[str]]):
+    newly_added_tours = get_ids_of_newly_added_child_nodes(tours, nodes)
+
+    if len(newly_added_tours) == 0:
+        return
+
+    for node_id in newly_added_tours:
+        tours.append(['0', node_id, '0'])
+        traversal_states.append(['0'])
+
+    return tours, traversal_states
+
+
+
 def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int):
     # Initialise node families, the dynamic node list that manages the node families, and the dynamic distance matrix
     dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
@@ -211,7 +234,8 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
     while unvisited_nodes or original_tours != current_traversal_states:
         # Traverse each tour
-        for i in range(0, len(original_tours)):
+        i = 0
+        while i < len(original_tours):
             # Except if the tour has already ended
             if original_tour_positional_index[i]+1 >= len(original_tours[i]) or original_tours[i] in completed_original_tours:
                 continue
@@ -221,6 +245,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             # Check if node family has been visited before
             visited_node_family = get_node_family(get_node_family_from_child_node(next_node_in_tour), node_families)
 
+            # TODO: reconcile_expected_and_actual_demand must also update current_traversal_states
             current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes = reconcile_expected_and_actual_demand(current_tours, dynamic_distance_matrix,
                                                                                                                             dynamic_node_list, next_node_in_tour, nodes,
                                                                                                                             original_tours, unvisited_nodes, visited_node_family)
@@ -228,10 +253,14 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             unvisited_nodes = update_loop_visitation_variables(completed_original_tours, current_traversal_states, i, next_node_in_tour, original_tours, unvisited_nodes)
 
             original_tour_positional_index[i] += 1
+            i += 1
 
 
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
+            # If new nodes were created, we need to add non-original tours to current_tours. These will also be optimised as part of simulated annealing, but not started until
+            current_tours, current_traversal_states = integrate_newly_added_child_tours(current_tours, nodes, current_traversal_states)
+
             new_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective,
                                                                                                             initial_temperature, iterations, current_traversal_states)
 

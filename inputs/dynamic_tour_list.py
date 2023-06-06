@@ -1,12 +1,13 @@
 from inputs.node import Node
+from inputs.tour import Tour
 
 
-def create_tours(tours: list[list[str]], nodes: list[Node]) -> list[list[Node]]:
+def create_tours(tours: list[list[str]], nodes: list[Node]) -> list[Tour]:
     # Create a dictionary that maps node ids to nodes
     node_dict = {node.id: node for node in nodes}
 
     # Use list comprehension to create the new tours
-    new_tours = [[node_dict[node_id] for node_id in tour] for tour in tours]
+    new_tours = [Tour([node_dict[node_id] for node_id in tour]) for tour in tours]
 
     return new_tours
 
