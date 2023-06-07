@@ -164,6 +164,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
             continue
 
     # TODO: Return type of best_objective_function_value is a numpy float
+    print()
     return best_objective_function_value, tours
 
 
@@ -221,7 +222,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
                 break
 
         # Randomly select a node (NOT NODE INDEX!) from lock index onwards from the randomly selected tour
-        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index][current_lock_indices[randomly_selected_extraction_tour_index] + 1:] if node != 0])
+        random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index][current_lock_indices[randomly_selected_extraction_tour_index] + 1:]
+                                     if node != '0'])
         candidate_tours = copy.deepcopy(current_tours)
         candidate_tours[randomly_selected_extraction_tour_index].remove(random_node)
 
@@ -235,8 +237,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             del candidate_traversal_states[randomly_selected_extraction_tour_index]
 
         # Add an empty tour
-        candidate_tours.append([0, 0])
-        candidate_traversal_states.append([0])
+        candidate_tours.append(['0', '0'])
+        candidate_traversal_states.append(['0'])
 
         # Update candidate_lock_indices
         candidate_lock_indices = determine_lock_indices(candidate_traversal_states)
@@ -286,6 +288,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             continue
 
     # TODO: Return type of best_objective_function_value is a numpy float
+    print()
     return best_objective_function_value, tours, traversal_states
 
 

@@ -2,7 +2,7 @@ import numpy as np
 from inputs.node import Node, InputNode
 
 INITIAL_TEMP = 10
-ITERATIONS = 1
+ITERATIONS = 5
 
 # VRP parameters
 VEHICLE_CAPACITY = 600
