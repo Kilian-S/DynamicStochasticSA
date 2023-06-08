@@ -240,8 +240,6 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
                                                       dynamic_node_list: DynamicNodeList):
     is_in_original_tours = current_tours[i] in original_tours
 
-    #TODO: Shortfall is defined as: max(0, node_demand - free capacity of the truck at that point in the tour)
-    # Calculate the shortfall (unmet demand of the visited node)
     child_node_index = get_child_node_index(current_tours[i], visited_node_family)
     shortfall = get_shortfall(current_tours[i], nodes, child_node_index)
 
@@ -332,8 +330,6 @@ def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic
 
 def update_loop_visitation_variables(completed_original_tours: list[list[str]], current_traversal_states: list[list[str]], i: int, next_node_in_tour: str,
                                      original_tours: list[list[str]], unvisited_nodes: set[Node]):
-    # TODO: Make sure that the beginning of original_tours and current_tours sync up (then using i to index current_traversal_states becomes legal) The non original tour nodes
-    #  dont matter
     current_traversal_states[i].append(next_node_in_tour)
     if next_node_in_tour == '0':
         # Tour has been completed
@@ -379,7 +375,6 @@ def reconcile_current_and_original_tours(current_tours: list[list[str]], current
 
 def update_original_tours(original_tours: list[list[str]], original_tour_positional_index: list[int], current_tours: list[list[str]], current_traversal_states: list[list[str]],
                           nodes: list[Node]):
-    # TODO: Make sure current_tours and current_traversal_states remain indexed consistently to one another
     # Add tours to original_tours that are close to full
     for tour in current_tours:
         if get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILIZATION_TARGET and tour not in original_tours:
