@@ -1,6 +1,6 @@
 import copy
 
-from errors.errors import IncorrectReconciliationError
+from errors.errors import IncorrectReconciliationError, NodeNotFoundError
 from global_parameters import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
 from inputs.dynamic_nodes_list import DynamicNodeList
@@ -144,33 +144,33 @@ def get_tour_demand(tour: list[str], nodes: list[Node]):
     return total_demand
 
 
+def get_tour_demand_up_to_index(tour: list[str], nodes: list[Node], i: int):
+    return get_tour_demand(tour[:i+1], nodes)
+
+
 def remove_indices_from_list(input_list: list, removed_indices: list[int]):
     return [item for i, item in enumerate(input_list) if i not in removed_indices]
 
 
-def get_shortfall_info(tour: list[str], nodes: list[Node]):
-    node_dict = {node.id: node for node in nodes}
+def get_shortfall(tour: list[str], nodes: list[Node], index: int):
+    return max(0, get_tour_demand_up_to_index(tour, nodes, index) - VEHICLE_CAPACITY)
 
-    total_demand = 0
-    filled_index = -1
-    shortfall = 0
 
+def get_child_node_index(tour: list[str], visited_node_family: NodeFamily) -> int:
     for i, node_id in enumerate(tour):
-        node = node_dict[node_id]
-        total_demand += node.expected_demand
+        try:
+            node_family_id, _ = node_id.split('.', 1)
+            if node_family_id == visited_node_family.node_family_id:
+                return i
 
-        if total_demand > VEHICLE_CAPACITY:
-            filled_index = i
-            shortfall = total_demand - VEHICLE_CAPACITY
-            break
-        elif total_demand == VEHICLE_CAPACITY:
-            filled_index = i
-            break
+        except ValueError:
+            # Skip the depot node (ID = '0'), which doesn't have a "."
+            continue
 
-    return filled_index, shortfall
+    raise NodeNotFoundError
 
 
-def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, nodes: list[Node], unvisited_nodes: set[str],
+def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, nodes: list[Node], unvisited_nodes: set[Node],
                                   visited_node_family: NodeFamily):
     # Update unvisited_nodes
     updated_child_nodes = visited_node_family.child_nodes
@@ -183,7 +183,7 @@ def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix
 
 
 def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, next_node_in_tour: str,
-                                  nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[str], visited_node_family: NodeFamily,
+                                  nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[Node], visited_node_family: NodeFamily,
                                   current_traversal_states: list[list[str]], original_tour_positional_index: list[int]):
     # Update unvisited_nodes
     updated_child_nodes = visited_node_family.child_nodes
@@ -235,17 +235,19 @@ def end_tour_early(current_tours: list[list[str]], i: int, filled_index: int):
     return primary_tour, shortfall_tour
 
 
-def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[str]], original_tours: list[list[str]], unvisited_nodes: set[str],
+def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[str]], original_tours: list[list[str]], unvisited_nodes: set[Node],
                                                       current_traversal_states: list[list[str]], nodes: list[Node], visited_node_family: NodeFamily, i: int,
                                                       dynamic_node_list: DynamicNodeList):
     is_in_original_tours = current_tours[i] in original_tours
 
+    #TODO: Shortfall is defined as: max(0, node_demand - free capacity of the truck at that point in the tour)
     # Calculate the shortfall (unmet demand of the visited node)
-    filled_index, shortfall = get_shortfall_info(current_tours[i], nodes)
+    child_node_index = get_child_node_index(current_tours[i], visited_node_family)
+    shortfall = get_shortfall(current_tours[i], nodes, child_node_index)
 
     if shortfall == 0:
         # End tour early (primary tour) and append the rest of the nodes (shortfall tour) to current_tours and (if the tour is in original_tours) to original_tours
-        primary_tour, shortfall_tour = end_tour_early(current_tours, i, filled_index)
+        primary_tour, shortfall_tour = end_tour_early(current_tours, i, child_node_index)
         current_tours[i] = primary_tour
 
         if is_in_original_tours:
@@ -259,27 +261,27 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
     else:
         # Create a new child node that is part of the node family that embodies the shortfall
         shortfall_node = visited_node_family.create_new_child_node(shortfall)
-        unvisited_nodes.add(shortfall_node.id)
+        unvisited_nodes.add(shortfall_node)
 
-        primary_tour, shortfall_tour = end_tour_early(current_tours, i, filled_index)
+        primary_tour, shortfall_tour = end_tour_early(current_tours, i, child_node_index)
         current_tours[i] = primary_tour
 
         # Decrease demand of the split node
-        n = visited_node_family.get_child_node_with_id(current_tours[i][filled_index])
+        n = visited_node_family.get_child_node_with_id(current_tours[i][child_node_index])
         n.expected_demand -= shortfall
 
         if is_in_original_tours:
             original_tours[i] = primary_tour
 
-        if len(shortfall_tour) >= 3:
-            shortfall_tour.insert(1, shortfall_node.id)
-            current_traversal_states.append(['0'])
+        shortfall_tour.insert(1, shortfall_node.id)
+        current_tours.append(shortfall_tour)
+        current_traversal_states.append(['0'])
 
     nodes = dynamic_node_list.get_all_nodes()
     return current_tours, original_tours, unvisited_nodes, current_traversal_states, nodes
 
 
-def check_vehicle_capacity_constraint_of_tours(current_tours: list[list[str]], original_tours: list[list[str]], visited_node_family: NodeFamily, unvisited_nodes: set[str],
+def check_vehicle_capacity_constraint_of_tours(current_tours: list[list[str]], original_tours: list[list[str]], visited_node_family: NodeFamily, unvisited_nodes: set[Node],
                                                current_traversal_states: list[list[str]], nodes: list[Node], dynamic_node_list: DynamicNodeList):
     # Check vehicle capacity constraint for each tour; If the constraint is violated reconciliation is necessary
     i = 0
@@ -296,7 +298,7 @@ def check_vehicle_capacity_constraint_of_tours(current_tours: list[list[str]], o
 
 
 def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList,
-                                         next_node_in_tour: str, nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[str], visited_node_family: NodeFamily,
+                                         next_node_in_tour: str, nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[Node], visited_node_family: NodeFamily,
                                          current_traversal_states: list[list[str]], original_tour_positional_index: list[int]):
     if not visited_node_family.is_visited:
         # Node family has not been visited: Check if recalculation of children nodes based on actual demand instead of expected demand is necessary
@@ -324,17 +326,20 @@ def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic
                                                                                                                                                    current_traversal_states, nodes,
                                                                                                                                                    dynamic_node_list)
 
+    nodes = dynamic_node_list.get_all_nodes()
     return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index
 
 
 def update_loop_visitation_variables(completed_original_tours: list[list[str]], current_traversal_states: list[list[str]], i: int, next_node_in_tour: str,
-                                     original_tours: list[list[str]], unvisited_nodes: set[str]):
+                                     original_tours: list[list[str]], unvisited_nodes: set[Node]):
+    # TODO: Make sure that the beginning of original_tours and current_tours sync up (then using i to index current_traversal_states becomes legal) The non original tour nodes
+    #  dont matter
     current_traversal_states[i].append(next_node_in_tour)
-    if next_node_in_tour == 0:
+    if next_node_in_tour == '0':
         # Tour has been completed
         completed_original_tours.append(original_tours[i])
     else:
-        unvisited_nodes = {node for node in unvisited_nodes if node != next_node_in_tour}
+        unvisited_nodes = {node for node in unvisited_nodes if node.id != next_node_in_tour}
     return unvisited_nodes
 
 
@@ -349,6 +354,49 @@ def integrate_newly_added_child_tours(tours: list[list[str]], nodes: list[Node],
         traversal_states.append(['0'])
 
     return tours, traversal_states
+
+
+def swap_in_list(swap_list: list, index1: int, index2: int) -> list:
+    # Save the element to be swapped
+    temp_element = swap_list[index1]
+
+    # Swap in list_
+    swap_list[index1] = swap_list[index2]
+    swap_list[index2] = temp_element
+
+    return swap_list
+
+
+def reconcile_current_and_original_tours(current_tours: list[list[str]], current_traversal_states: list[list[str]], original_tours: list[list[str]], tour: list[str]):
+    tour_index_in_current_tours = current_tours.index(tour)
+    expected_index_in_original_tours = len(original_tours)
+    if tour_index_in_current_tours != expected_index_in_original_tours:
+        current_tours = swap_in_list(current_tours, tour_index_in_current_tours, expected_index_in_original_tours)
+        current_traversal_states = swap_in_list(current_traversal_states, tour_index_in_current_tours, expected_index_in_original_tours)
+
+    return current_tours, current_traversal_states
+
+
+def update_original_tours(original_tours: list[list[str]], original_tour_positional_index: list[int], current_tours: list[list[str]], current_traversal_states: list[list[str]],
+                          nodes: list[Node]):
+    # TODO: Make sure current_tours and current_traversal_states remain indexed consistently to one another
+    # Add tours to original_tours that are close to full
+    for tour in current_tours:
+        if get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILIZATION_TARGET and tour not in original_tours:
+            current_tours, current_traversal_states = reconcile_current_and_original_tours(current_tours, current_traversal_states, original_tours, tour)
+
+            original_tours.append(tour)
+            original_tour_positional_index.append(0)
+
+    # All current original_tours have been completed
+    if set(tuple(tour) for tour in original_tours).issubset(tuple(state) for state in current_traversal_states):
+        # TODO: Is using set difference the right way to do this?
+        left_over_current_tours = [list(t) for t in set(tuple(tour) for tour in current_tours) - set(tuple(tour) for tour in original_tours)]
+        for tour in left_over_current_tours:
+            current_tours, current_traversal_states = reconcile_current_and_original_tours(current_tours, current_traversal_states, original_tours, tour)
+
+            original_tours.append(tour)
+            original_tour_positional_index.append(0)
 
 
 def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int):
@@ -367,6 +415,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
         while i < len(original_tours):
             # Except if the tour has already ended
             if original_tour_positional_index[i] + 1 >= len(original_tours[i]) or original_tours[i] in completed_original_tours:
+                i += 1
                 continue
 
             next_node_in_tour = original_tours[i][original_tour_positional_index[i] + 1]
@@ -383,11 +432,14 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             original_tour_positional_index[i] += 1
             i += 1
 
+        # If new nodes were created, we need to add non-original tours to current_tours. These will also be optimised as part of simulated annealing, but not started until
+        current_tours, current_traversal_states = integrate_newly_added_child_tours(current_tours, nodes, current_traversal_states)
+
+        # Add non-original tours to original_tours; either if the expected tour demand is >=? vehicle capacity, or if all other original tours are finished
+        update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes)
+
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
-            # If new nodes were created, we need to add non-original tours to current_tours. These will also be optimised as part of simulated annealing, but not started until
-            current_tours, current_traversal_states = integrate_newly_added_child_tours(current_tours, nodes, current_traversal_states)
-
             new_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective,
                                                                                                             initial_temperature, iterations, current_traversal_states)
 

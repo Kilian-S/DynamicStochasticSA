@@ -8,3 +8,7 @@ class IncorrectTraversalError(Exception):
 
 class IncorrectReconciliationError(Exception):
     pass
+
+
+class NodeNotFoundError(Exception):
+    pass
