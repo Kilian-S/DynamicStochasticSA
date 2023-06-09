@@ -108,9 +108,16 @@ class TestIntegrateNewlyAddedChildTours(unittest.TestCase):
         self.assertTrue(tours[2] == ['0', '2.5', '0'])
         self.assertTrue(traversal_states[2] == ['0'])
 
+class TestReconcileCurrentAndOriginalTours(unittest.TestCase):
+    def test_reconcile_current_and_original_tours(self):
+        original_tours = [['0', '1.1', '0'], ['0', '3.2', '0'], ['0', '4.1', '0']]
+        new_tours = [['0', '2.1', '0'], ['0', '3.1', '0'], ['0', '3.2', '0'], ['0', '1.1', '0'], ['0', '4.1', '0']]
+        new_traversal_states = [['0', '2.1'], ['0', '3.1'], ['0', '3.2'], ['0', '1.1'], ['0', '4.1']]
 
+        reordered_tours, reordered_traversal_states = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
 
-
+        self.assertEqual(reordered_tours, [['0', '1.1', '0'], ['0', '3.2', '0'], ['0', '4.1', '0'], ['0', '2.1', '0'], ['0', '3.1', '0']])
+        self.assertEqual(reordered_traversal_states, [['0', '1.1'], ['0', '3.2'], ['0', '4.1'], ['0', '2.1'], ['0', '3.1']])
 
 
 
