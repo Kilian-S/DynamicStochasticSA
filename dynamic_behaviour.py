@@ -368,8 +368,11 @@ def add_current_tour_to_original_tours(current_tours: list[list[str]], current_t
     # TODO: fix this
     expected_index_in_original_tours = len(original_tours)
     if tour_index_in_current_tours != expected_index_in_original_tours:
-        current_tours = swap_in_list(current_tours, tour_index_in_current_tours, expected_index_in_original_tours)
-        current_traversal_states = swap_in_list(current_traversal_states, tour_index_in_current_tours, expected_index_in_original_tours)
+        temp_tour = current_tours.pop(tour_index_in_current_tours)
+        current_tours.insert(expected_index_in_original_tours, temp_tour)
+
+        temp_traversal = current_traversal_states.pop(tour_index_in_current_tours)
+        current_traversal_states.insert(expected_index_in_original_tours, temp_traversal)
 
     return current_tours, current_traversal_states
 
@@ -378,7 +381,7 @@ def update_original_tours(original_tours: list[list[str]], original_tour_positio
                           nodes: list[Node]):
     # Add tours to original_tours that are close to full
     for tour in current_tours:
-        if get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILIZATION_TARGET and tour not in original_tours:
+        if tour not in original_tours and get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILIZATION_TARGET:
             current_tours, current_traversal_states = add_current_tour_to_original_tours(current_tours, current_traversal_states, original_tours, tour)
 
             original_tours.append(tour)
@@ -410,7 +413,10 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     reordered_tours.extend(remaining_tours)
     reordered_traversal_states.extend(remaining_traversal_states)
 
-    return reordered_tours, reordered_traversal_states
+    for i in range(len(original_tours)):
+        original_tours[i] = reordered_tours[i]
+
+    return reordered_tours, reordered_traversal_states, original_tours
 
 
 def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int):
@@ -454,10 +460,11 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
+            dynamic_distance_matrix.update(nodes)
             current_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective,
                                                                                                                         initial_temperature, iterations, current_traversal_states)
 
-            current_tours, current_traversal_states = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
+            current_tours, current_traversal_states, original_tours = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
 
 
 
