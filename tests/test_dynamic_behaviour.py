@@ -11,21 +11,21 @@ from inputs.node_family import NodeFamily
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
 from inputs.node import InputNode
 
-np_distance_matrix = np.array([
-    [0, 10, 15],
-    [10, 0, 35],
-    [15, 35, 0]
-])
-
-input_nodes = [InputNode('0', 0, 0), InputNode('1', 150, 100), InputNode('2', 100, 100)]
-vehicle_capacity = 100
-
 
 class TestReconcileChildNodeIncrease(unittest.TestCase):
     def test_update_unvisited_nodes(self):
+        np_distance_matrix = np.array([
+            [0, 10, 15],
+            [10, 0, 35],
+            [15, 35, 0]
+        ])
+
+        input_nodes = [InputNode('0', 0, 0), InputNode('1', 150, 100), InputNode('2', 100, 100)]
+        vehicle_capacity = 100
+
         ddm, dnl, node_families, nodes = initialise_dynamic_data_structures(np_distance_matrix, input_nodes, vehicle_capacity)
         visited_node_family = node_families[1]
-        unvisited_nodes = []
+        unvisited_nodes = set()
         node_families[1].child_nodes = [Node('1.1', 400), Node('1.2', 200)]
 
         updated_child_nodes = visited_node_family.child_nodes
@@ -36,12 +36,17 @@ class TestReconcileChildNodeIncrease(unittest.TestCase):
         self.assertEqual(unvisited_nodes, expected_unvisited_nodes)
 
     def test_update_ddm(self):
+        np_distance_matrix = np.array([
+            [0, 10, 15],
+            [10, 0, 35],
+            [15, 35, 0]
+        ])
         input_nodes = [InputNode('0', 0, 0), InputNode('1', 100, 100), InputNode('2', 400, 400)]
         vehicle_capacity = 400
 
         ddm, dnl, node_families, nodes = initialise_dynamic_data_structures(np_distance_matrix, input_nodes, vehicle_capacity)
         visited_node_family = node_families[1]
-        unvisited_nodes = []
+        unvisited_nodes = set()
         node_families[1].child_nodes = [Node('1.1', 400), Node('1.2', 200)]
         reconcile_child_node_increase(ddm, dnl, nodes, unvisited_nodes, visited_node_family)
 
@@ -51,6 +56,11 @@ class TestReconcileChildNodeIncrease(unittest.TestCase):
 
 class TestReconcileChildNodeDecrease(unittest.TestCase):
     def test_update_unvisited_nodes_without_empty_list_creation(self):
+        np_distance_matrix = np.array([
+            [0, 10, 15],
+            [10, 0, 35],
+            [15, 35, 0]
+        ])
         input_nodes = [InputNode('0', 0, 0), InputNode('1', 150, 100), InputNode('2', 200, 100)]
         vehicle_capacity = 100
 
@@ -64,7 +74,7 @@ class TestReconcileChildNodeDecrease(unittest.TestCase):
         unvisited_nodes = {'1.2', '2.1', '1.1', '2.2'}
 
         current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes = reconcile_child_node_decrease(current_tours, ddm, dnl, next_node_in_tour, nodes, original_tours,
-                                                                                                               unvisited_nodes, visited_node_family)
+                                                                                                                 unvisited_nodes, visited_node_family)
 
         self.assertEqual('1.1', next_node_in_tour)
         self.assertEqual([['0', '1.1', '2.1', '0'], ['0', '2.2', '0']], current_tours)
@@ -72,6 +82,11 @@ class TestReconcileChildNodeDecrease(unittest.TestCase):
         self.assertEqual({'1.1', '2.1', '2.2'}, set(unvisited_nodes))
 
     def test_update_unvisited_nodes_with_empty_list_creation(self):
+        np_distance_matrix = np.array([
+            [0, 10, 15],
+            [10, 0, 35],
+            [15, 35, 0]
+        ])
         input_nodes = [InputNode('0', 0, 0), InputNode('1', 150, 100), InputNode('2', 100, 100)]
         vehicle_capacity = 100
 
@@ -85,16 +100,21 @@ class TestReconcileChildNodeDecrease(unittest.TestCase):
         unvisited_nodes = {'1.2', '2.1', '1.1'}
 
         current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes = reconcile_child_node_decrease(current_tours, ddm, dnl, next_node_in_tour, nodes, original_tours,
-                                                                                                               unvisited_nodes, visited_node_family)
+                                                                                                                 unvisited_nodes, visited_node_family)
 
         self.assertEqual('1.1', next_node_in_tour)
         self.assertEqual([['0', '1.1', '2.1', '0']], current_tours)
         self.assertEqual([['0', '1.1', '2.1', '0']], original_tours)
-        self.assertEqual({'1.1', '2.1',}, set(unvisited_nodes))
+        self.assertEqual({'1.1', '2.1', }, set(unvisited_nodes))
 
 
 class TestIntegrateNewlyAddedChildTours(unittest.TestCase):
     def test_integrate_newly_added_child_tours(self):
+        np_distance_matrix = np.array([
+            [0, 10, 15],
+            [10, 0, 35],
+            [15, 35, 0]
+        ])
         input_nodes = [InputNode('0', 0, 0), InputNode('1', 100, 100), InputNode('2', 400, 400)]
         vehicle_capacity = 100
 
@@ -108,6 +128,7 @@ class TestIntegrateNewlyAddedChildTours(unittest.TestCase):
         self.assertTrue(tours[2] == ['0', '2.5', '0'])
         self.assertTrue(traversal_states[2] == ['0'])
 
+
 class TestReconcileCurrentAndOriginalTours(unittest.TestCase):
     def test_reconcile_current_and_original_tours(self):
         original_tours = [['0', '1.1', '0'], ['0', '3.2', '0'], ['0', '4.1', '0']]
@@ -119,17 +140,16 @@ class TestReconcileCurrentAndOriginalTours(unittest.TestCase):
         self.assertEqual(reordered_tours, [['0', '1.1', '0'], ['0', '3.2', '0'], ['0', '4.1', '0'], ['0', '2.1', '0'], ['0', '3.1', '0']])
         self.assertEqual(reordered_traversal_states, [['0', '1.1'], ['0', '3.2'], ['0', '4.1'], ['0', '2.1'], ['0', '3.1']])
 
+
 class TestDynamicSA(unittest.TestCase):
-    def test_simple_configuration(self):
-        INITIAL_TEMP = 10
-        ITERATIONS = 5
+    def test_simple(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0.9
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
 
-        UTILISATION_TARGET = 0.9
-
-        # VRP parameters
-        VEHICLE_CAPACITY = 600
-
-        SYM_DISTANCE_MATRIX = np.array([
+        distance_matrix = np.array([
             [0, 10, 15, 20, 12],
             [10, 0, 35, 25, 44],
             [15, 35, 0, 30, 10],
@@ -137,48 +157,23 @@ class TestDynamicSA(unittest.TestCase):
             [12, 44, 10, 4, 0]
         ])
 
-        NODES = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
+        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
-        dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)
+    def test_simple_low_utilisation_target(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0.5
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
 
+        distance_matrix = np.array([
+            [0, 10, 15, 20, 12],
+            [10, 0, 35, 25, 44],
+            [15, 35, 0, 30, 10],
+            [20, 25, 30, 0, 4],
+            [12, 44, 10, 4, 0]
+        ])
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        while True:
+            dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 

@@ -1,5 +1,4 @@
 import copy
-
 from errors.errors import IncorrectReconciliationError, NodeNotFoundError
 from global_parameters import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
@@ -103,9 +102,9 @@ def initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
     return dynamic_distance_matrix, dynamic_node_list, node_families, nodes
 
 
-def initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective):
+def initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective, vehicle_capacity: int):
     current_tours = create_initial_solution(nodes)
-    current_tours_value, current_tours = simulated_annealing(current_tours, nodes, dynamic_distance_matrix, objective, initial_temperature, iterations)
+    current_tours_value, current_tours = simulated_annealing(current_tours, nodes, dynamic_distance_matrix, objective, initial_temperature, iterations, vehicle_capacity)
     current_traversal_states = [['0'] for _ in current_tours]
     return current_tours_value, current_tours, current_traversal_states
 
@@ -152,8 +151,8 @@ def remove_indices_from_list(input_list: list, removed_indices: list[int]):
     return [item for i, item in enumerate(input_list) if i not in removed_indices]
 
 
-def get_shortfall(tour: list[str], nodes: list[Node], index: int):
-    return max(0, get_tour_demand_up_to_index(tour, nodes, index) - VEHICLE_CAPACITY)
+def get_shortfall(tour: list[str], nodes: list[Node], index: int, vehicle_capacity: int):
+    return max(0, get_tour_demand_up_to_index(tour, nodes, index) - vehicle_capacity)
 
 
 def get_child_node_index(tour: list[str], visited_node_family: NodeFamily) -> int:
@@ -237,11 +236,11 @@ def end_tour_early(current_tours: list[list[str]], i: int, filled_index: int):
 
 def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[str]], original_tours: list[list[str]], unvisited_nodes: set[Node],
                                                       current_traversal_states: list[list[str]], nodes: list[Node], visited_node_family: NodeFamily, i: int,
-                                                      dynamic_node_list: DynamicNodeList):
+                                                      dynamic_node_list: DynamicNodeList, vehicle_capacity: int):
     is_in_original_tours = current_tours[i] in original_tours
 
     child_node_index = get_child_node_index(current_tours[i], visited_node_family)
-    shortfall = get_shortfall(current_tours[i], nodes, child_node_index)
+    shortfall = get_shortfall(current_tours[i], nodes, child_node_index, vehicle_capacity)
 
     if shortfall == 0:
         # End tour early (primary tour) and append the rest of the nodes (shortfall tour) to current_tours and (if the tour is in original_tours) to original_tours
@@ -280,16 +279,16 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
 
 
 def check_vehicle_capacity_constraint_of_tours(current_tours: list[list[str]], original_tours: list[list[str]], visited_node_family: NodeFamily, unvisited_nodes: set[Node],
-                                               current_traversal_states: list[list[str]], nodes: list[Node], dynamic_node_list: DynamicNodeList):
+                                               current_traversal_states: list[list[str]], nodes: list[Node], dynamic_node_list: DynamicNodeList, vehicle_capacity: int):
     # Check vehicle capacity constraint for each tour; If the constraint is violated reconciliation is necessary
     i = 0
     while i < len(current_tours):
-        if not is_within_vehicle_capacity([current_tours[i]], nodes):
+        if not is_within_vehicle_capacity([current_tours[i]], nodes, vehicle_capacity):
             current_tours, original_tours, unvisited_nodes, current_traversal_states, nodes = reconcile_tours_with_violated_capacity_constraint(current_tours, original_tours,
                                                                                                                                                 unvisited_nodes,
                                                                                                                                                 current_traversal_states, nodes,
                                                                                                                                                 visited_node_family, i,
-                                                                                                                                                dynamic_node_list)
+                                                                                                                                                dynamic_node_list, vehicle_capacity)
         i += 1
 
     return current_tours, original_tours, visited_node_family, unvisited_nodes, current_traversal_states
@@ -297,7 +296,7 @@ def check_vehicle_capacity_constraint_of_tours(current_tours: list[list[str]], o
 
 def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList,
                                          next_node_in_tour: str, nodes: list[Node], original_tours: list[list[str]], unvisited_nodes: set[Node], visited_node_family: NodeFamily,
-                                         current_traversal_states: list[list[str]], original_tour_positional_index: list[int]):
+                                         current_traversal_states: list[list[str]], original_tour_positional_index: list[int], vehicle_capacity: int):
     if not visited_node_family.is_visited:
         # Node family has not been visited: Check if recalculation of children nodes based on actual demand instead of expected demand is necessary
         new_number_of_child_nodes, old_number_of_child_nodes = get_child_node_delta(visited_node_family)
@@ -322,7 +321,8 @@ def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic
                                                                                                                                                    visited_node_family,
                                                                                                                                                    unvisited_nodes,
                                                                                                                                                    current_traversal_states, nodes,
-                                                                                                                                                   dynamic_node_list)
+                                                                                                                                                   dynamic_node_list,
+                                                                                                                                                   vehicle_capacity)
 
     nodes = dynamic_node_list.get_all_nodes()
     return current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index
@@ -378,10 +378,10 @@ def add_current_tour_to_original_tours(current_tours: list[list[str]], current_t
 
 
 def update_original_tours(original_tours: list[list[str]], original_tour_positional_index: list[int], current_tours: list[list[str]], current_traversal_states: list[list[str]],
-                          nodes: list[Node]):
+                          nodes: list[Node], vehicle_capacity: int, utilisation_target: float):
     # Add tours to original_tours that are close to full
     for tour in current_tours:
-        if tour not in original_tours and get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILISATION_TARGET:
+        if tour not in original_tours and get_tour_demand(tour, nodes) / vehicle_capacity >= utilisation_target:
             current_tours, current_traversal_states = add_current_tour_to_original_tours(current_tours, current_traversal_states, original_tours, tour)
 
             original_tours.append(tour)
@@ -404,7 +404,9 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     remaining_tours = new_tours.copy()
     remaining_traversal_states = new_traversal_states.copy()
 
-    for original_tour in original_tours:
+    # Get all tours that have traversal_state = ['0'];
+
+    for original_tour, i in original_tours:
         index_in_remaining_tours = get_tour_id_with_node_id(remaining_tours, original_tour[1])
 
         reordered_tours.append(remaining_tours.pop(index_in_remaining_tours))
@@ -424,7 +426,8 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
     dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
 
     # Create initial solution
-    current_tours_value, current_tours, current_traversal_states = initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective)
+    current_tours_value, current_tours, current_traversal_states = initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective,
+                                                                                                vehicle_capacity)
 
     # All nodes are unvisited (we exclude the depot). We assume that there are at least as many trucks as there are routes in the first SA solution
     completed_original_tours, original_tour_positional_index, original_tours, unvisited_nodes = initialise_loop_visitation_variables(current_tours, nodes)
@@ -445,7 +448,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
             current_tours, next_node_in_tour, nodes, original_tours, unvisited_nodes, current_traversal_states, original_tour_positional_index = reconcile_expected_and_actual_demand(
                 current_tours, dynamic_distance_matrix, dynamic_node_list, next_node_in_tour, nodes, original_tours, unvisited_nodes, visited_node_family,
-                current_traversal_states, original_tour_positional_index)
+                current_traversal_states, original_tour_positional_index, vehicle_capacity)
 
             unvisited_nodes = update_loop_visitation_variables(completed_original_tours, current_traversal_states, i, next_node_in_tour, original_tours, unvisited_nodes)
 
@@ -456,16 +459,16 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
         current_tours, current_traversal_states = integrate_newly_added_child_tours(current_tours, nodes, current_traversal_states)
 
         # Add non-original tours to original_tours; either if the expected tour demand is >=? vehicle capacity, or if all other original tours are finished
-        update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes)
+        update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
 
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
             dynamic_distance_matrix.update(nodes)
             current_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective,
-                                                                                                                        initial_temperature, iterations, current_traversal_states)
+                                                                                                                initial_temperature, iterations, vehicle_capacity,
+                                                                                                                current_traversal_states)
 
             current_tours, current_traversal_states, original_tours = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
 
 
-
-dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)
+#dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)

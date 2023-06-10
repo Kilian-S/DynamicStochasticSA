@@ -1,6 +1,5 @@
 import copy
 import random
-
 import pandas as pd
 from numpy.random import rand
 from errors.errors import *
@@ -40,7 +39,7 @@ def get_node_by_id(node_id: str, nodes: list[Node]) -> Node:
     for node in nodes:
         if node.id == node_id:
             return node
-    return None
+    raise NodeNotFoundError
 
 
 def is_visitation(tours: list[list[any]], nodes: list[Node]):
@@ -72,17 +71,17 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
     return True  # Flow conservation condition satisfied
 
 
-def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node]):
+def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node], vehicle_capacity: int):
     for tour in tours:
         tour_demand = sum(get_node_by_id(node_id, nodes).expected_demand for node_id in tour[1:-1])
-        if tour_demand > VEHICLE_CAPACITY and len(tour) > 3:
+        if tour_demand > vehicle_capacity and len(tour) > 3:
             return False
     return True
 
 
-def is_correct_number_of_visits_set(nodes: list[Node]):
+def is_correct_number_of_visits_set(nodes: list[Node], vehicle_capacity: int):
     for node in nodes:
-        if node.expected_demand > VEHICLE_CAPACITY:
+        if node.expected_demand > vehicle_capacity:
             return False
     return True
 
@@ -101,14 +100,16 @@ def ends_at_depot(tours: list[list[any]]):
     return True
 
 
-def is_feasible(tours: list[list[any]], nodes: list[Node]):
-    return is_visitation(tours, nodes) and is_flow_conservation(tours) and is_within_vehicle_capacity(tours, nodes) and is_correct_number_of_visits_set(nodes) and starts_at_depot(
-        tours) and ends_at_depot(tours)
+def is_feasible(tours: list[list[any]], nodes: list[Node], vehicle_capacity: int):
+    return is_visitation(tours, nodes) and is_flow_conservation(tours) and is_within_vehicle_capacity(tours, nodes, vehicle_capacity) and \
+           is_correct_number_of_visits_set(nodes, vehicle_capacity) and \
+           starts_at_depot(tours) and ends_at_depot(tours)
 
 
-def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int):
+def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int,
+                        vehicle_capacity: int):
     # Check if input tour is feasible
-    if not is_feasible(tours, nodes):
+    if not is_feasible(tours, nodes, vehicle_capacity):
         raise InfeasibilityError
 
     best_objective_function_value = objective(tours, distance_matrix)
@@ -140,7 +141,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
         # Get rid of empty tours (ASSUMPTION: only the two depot nodes left in the removed tour)
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
 
-        if is_feasible(candidate_tours, nodes):
+        if is_feasible(candidate_tours, nodes, vehicle_capacity):
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
@@ -180,14 +181,13 @@ def is_traversal_ordered_subset_of_tours(tours: list[list[any]], traversal_state
     return True
 
 
-def determine_lock_indices(traversal_states: list[list[any]]):
+def determine_lock_indices(traversal_states: list[list[any]]) -> list[int]:
     """
     Determines for each tour the index of the node up to (and including) which that tour is locked.
 
     An index of 0 means that the first node is locked (as is always the case with the depot). An index of 1 means that the depot and the the first node in the tour are locked.
     Locked nodes cannot be visited again, and no nodes can be placed between two locked nodes.
 
-    :param tours: Complete and feasible list of tours
     :param traversal_states: current traversal state of each tour, tour 1 in tours corresponds to tour 1 in traversal_state
     :return: list[int]
     """
@@ -197,8 +197,8 @@ def determine_lock_indices(traversal_states: list[list[any]]):
 
 
 def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int,
-                                                 iterations: int, traversal_states: list[list[any]]):
-    if not is_feasible(tours, nodes):
+                                                 iterations: int, vehicle_capacity: int, traversal_states: list[list[any]]):
+    if not is_feasible(tours, nodes, vehicle_capacity):
         raise InfeasibilityError
 
     if not is_traversal_ordered_subset_of_tours(tours, traversal_states):
@@ -261,7 +261,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         if tmp - len(candidate_tours):
             del candidate_traversal_states[-1]
 
-        if is_feasible(candidate_tours, nodes):
+        if is_feasible(candidate_tours, nodes, vehicle_capacity):
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
