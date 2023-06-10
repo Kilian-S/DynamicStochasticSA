@@ -163,7 +163,6 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
         else:
             continue
 
-    # TODO: Return type of best_objective_function_value is a numpy float
     print()
     return best_objective_function_value, tours
 
@@ -287,14 +286,11 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         else:
             continue
 
-    # TODO: Return type of best_objective_function_value is a numpy float
     print()
     return best_objective_function_value, tours, traversal_states
 
 
-# simulated_annealing(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS)
-# x = simulated_annealing_with_dynamic_constraints(SIMPLE_TOUR, NODES, DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, SIMPLE_TOUR_TRAVERSAL_STATE)
-# print(x)
+
 
 
 

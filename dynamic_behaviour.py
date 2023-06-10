@@ -365,8 +365,8 @@ def swap_in_list(swap_list: list, index1: int, index2: int) -> list:
 
 def add_current_tour_to_original_tours(current_tours: list[list[str]], current_traversal_states: list[list[str]], original_tours: list[list[str]], tour: list[str]):
     tour_index_in_current_tours = current_tours.index(tour)
-    # TODO: fix this
     expected_index_in_original_tours = len(original_tours)
+
     if tour_index_in_current_tours != expected_index_in_original_tours:
         temp_tour = current_tours.pop(tour_index_in_current_tours)
         current_tours.insert(expected_index_in_original_tours, temp_tour)
@@ -381,7 +381,7 @@ def update_original_tours(original_tours: list[list[str]], original_tour_positio
                           nodes: list[Node]):
     # Add tours to original_tours that are close to full
     for tour in current_tours:
-        if tour not in original_tours and get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILIZATION_TARGET:
+        if tour not in original_tours and get_tour_demand(tour, nodes) / VEHICLE_CAPACITY >= UTILISATION_TARGET:
             current_tours, current_traversal_states = add_current_tour_to_original_tours(current_tours, current_traversal_states, original_tours, tour)
 
             original_tours.append(tour)
@@ -419,7 +419,7 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     return reordered_tours, reordered_traversal_states, original_tours
 
 
-def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int):
+def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int, utilisation_target: float):
     # Initialise node families, the dynamic node list that manages the node families, and the dynamic distance matrix
     dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
 
@@ -468,4 +468,4 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
 
 
-dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY)
+dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)
