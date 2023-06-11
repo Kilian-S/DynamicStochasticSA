@@ -157,7 +157,8 @@ class TestDynamicSA(unittest.TestCase):
             [12, 44, 10, 4, 0]
         ])
 
-        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+        while True:
+            dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
     def test_simple_low_utilisation_target(self):
         initial_temp = 10
@@ -176,4 +177,94 @@ class TestDynamicSA(unittest.TestCase):
 
         while True:
             dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+
+    def test_simple_no_utilisation_target(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
+
+        distance_matrix = np.array([
+            [0, 10, 15, 20, 12],
+            [10, 0, 35, 25, 44],
+            [15, 35, 0, 30, 10],
+            [20, 25, 30, 0, 4],
+            [12, 44, 10, 4, 0]
+        ])
+
+        while True:
+            dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+
+    def test_single_node_low_expected_high_actual_demand(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0.9
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 10, 6060)]
+
+        distance_matrix = np.array([
+            [0, 10],
+            [10, 0]
+        ])
+
+        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+
+    def test_single_node_high_expected_low_actual_demand(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0.9
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 10000, 1)]
+
+        distance_matrix = np.array([
+            [0, 10],
+            [10, 0]
+        ])
+
+        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+
+    def test_simple_with_single_zero_actual(self):
+        initial_temp = 10
+        iterations = 5
+        utilisation_target = 0.9
+        vehicle_capacity = 600
+        nodes = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 0)]
+
+        distance_matrix = np.array([
+            [0, 10, 15, 20, 12],
+            [10, 0, 35, 25, 44],
+            [15, 35, 0, 30, 10],
+            [20, 25, 30, 0, 4],
+            [12, 44, 10, 4, 0]
+        ])
+
+        while True:
+            dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

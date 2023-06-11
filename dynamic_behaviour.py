@@ -404,9 +404,9 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     remaining_tours = new_tours.copy()
     remaining_traversal_states = new_traversal_states.copy()
 
-    # Get all tours that have traversal_state = ['0'];
 
-    for original_tour, i in original_tours:
+
+    for original_tour in original_tours:
         index_in_remaining_tours = get_tour_id_with_node_id(remaining_tours, original_tour[1])
 
         reordered_tours.append(remaining_tours.pop(index_in_remaining_tours))
@@ -458,9 +458,6 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
         # If new nodes were created, we need to add non-original tours to current_tours. These will also be optimised as part of simulated annealing, but not started until
         current_tours, current_traversal_states = integrate_newly_added_child_tours(current_tours, nodes, current_traversal_states)
 
-        # Add non-original tours to original_tours; either if the expected tour demand is >=? vehicle capacity, or if all other original tours are finished
-        update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
-
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
             dynamic_distance_matrix.update(nodes)
@@ -469,6 +466,9 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
                                                                                                                 current_traversal_states)
 
             current_tours, current_traversal_states, original_tours = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
+
+            # Add non-original tours to original_tours; either if the expected tour demand is >=? vehicle capacity, or if all other original tours are finished
+            update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
 
 
 #dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)

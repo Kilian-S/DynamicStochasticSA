@@ -42,6 +42,17 @@ def get_node_by_id(node_id: str, nodes: list[Node]) -> Node:
     raise NodeNotFoundError
 
 
+def is_single_family(nodes: list[Node]) -> bool:
+    family_ids = set()
+    for node in nodes:
+        if node.id != '0':
+            family_id = node.id.split('.')[0]
+            family_ids.add(family_id)
+            if len(family_ids) > 1:
+                return False
+    return True
+
+
 def is_visitation(tours: list[list[any]], nodes: list[Node]):
     # Flatten the tours list and convert to a set for O(1) lookup time
     visited_nodes = set(node for tour in tours for node in tour)
@@ -108,12 +119,16 @@ def is_feasible(tours: list[list[any]], nodes: list[Node], vehicle_capacity: int
 
 def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int,
                         vehicle_capacity: int):
-    # Check if input tour is feasible
+    # Check if input tours are feasible
     if not is_feasible(tours, nodes, vehicle_capacity):
         raise InfeasibilityError
 
     best_objective_function_value = objective(tours, distance_matrix)
     current_tours, current_tours_value = tours, best_objective_function_value
+
+    if len(nodes) <= 2 or is_single_family(nodes):
+        return best_objective_function_value, tours
+
     i = 0
 
     while i < iterations:
@@ -209,6 +224,10 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
     current_traversal_states = traversal_states
     current_lock_indices = determine_lock_indices(traversal_states)
+
+    # TODO: Add check if the traversal states even allow for simulated annealing to occur
+    if len(nodes) <= 2:
+        return best_objective_function_value, tours
 
     i = 0
 

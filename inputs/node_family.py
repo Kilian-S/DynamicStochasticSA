@@ -1,5 +1,4 @@
 from typing import List
-
 from inputs.node import Node, InputNode
 
 
@@ -53,16 +52,15 @@ class NodeFamily:
     def update(self):
         self.is_visited = True
         expected_trips_required = self.node_family_expected_demand // self.vehicle_capacity
-        actual_trips_required = self.node_family_actual_demand // self.vehicle_capacity
+        actual_trips_required = max(self.node_family_actual_demand // self.vehicle_capacity, 1)
         remaining_capacity = self.node_family_actual_demand % self.vehicle_capacity
 
         if actual_trips_required == expected_trips_required:
-            if remaining_capacity == 0:
-                # Delete last node in child_nodes
-                self.child_nodes.pop()
+            if remaining_capacity == 0 and actual_trips_required != 1:
+                pass
             else:
                 # Update demand of last node in child_nodes
-                self.child_nodes[-1].expected_demand = self.node_family_actual_demand % self.vehicle_capacity
+                self.child_nodes[-1].expected_demand = remaining_capacity
 
         else:
             # Fewer / more trips are required than planned: self.child_nodes must shrink / grow
