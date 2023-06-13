@@ -3,7 +3,7 @@ import openpyxl
 from openpyxl import load_workbook
 
 
-gmaps = googlemaps.Client(key='AIzaSyDDgmthv161tSfmFVmglxlEuJsxn7WnH9A')
+GMAPS = googlemaps.Client(key='AIzaSyDDgmthv161tSfmFVmglxlEuJsxn7WnH9A')
 
 
 class Location:
@@ -13,8 +13,8 @@ class Location:
         self.longitude = longitude
 
 
-def create_locations(f):
-    workbook = load_workbook(filename=f)
+def create_locations(filename: str):
+    workbook = load_workbook(filename=filename)
     sheet = workbook.active
     locations = []
 
@@ -30,7 +30,7 @@ def create_locations(f):
     return locations
 
 
-def create_distance_matrix(locations, max_elements=10):
+def create_distance_matrix(locations: list[Location], max_elements=10):
     n = len(locations)
     distance_matrix = [[0] * n for _ in range(n)]
     coordinates = [(location.latitude, location.longitude) for location in locations]
@@ -41,7 +41,7 @@ def create_distance_matrix(locations, max_elements=10):
             destinations = coordinates[j:min(j + max_elements, n)]
 
             # Call the Distance Matrix API with the current set of origins and destinations
-            distance_matrix_response = gmaps.distance_matrix(origins, destinations, mode="driving")
+            distance_matrix_response = GMAPS.distance_matrix(origins, destinations, mode="driving")
 
             for k, row in enumerate(distance_matrix_response["rows"]):
                 for l, element in enumerate(row["elements"]):
@@ -70,9 +70,23 @@ def write_distance_matrix_to_excel(distance_matrix, file_name, sheet_name):
     workbook.save(file_name)
 
 
-# locations = create_locations("distances.xlsx")
-# matrix = create_distance_matrix(locations)
-# write_distance_matrix_to_excel(matrix, "distances.xlsx", "Sheet2")
+def make_symmetric(matrix: list[list[int]]):
+    n = len(matrix)
+    for i in range(n):
+        for j in range(i+1, n):
+            # use the row value to update the column
+            matrix[j][i] = matrix[i][j]
+    return matrix
+
+
+def create_symmetric_distance_matrix(input_doc: str, output_doc: str, output_sheet: str):
+    locations = create_locations(input_doc)
+    matrix = create_distance_matrix(locations)
+    matrix = make_symmetric(matrix)
+    write_distance_matrix_to_excel(matrix, output_doc, output_sheet)
+
+
+create_symmetric_distance_matrix("distances.xlsx", "distances.xlsx", "Sheet2")
 
 
 

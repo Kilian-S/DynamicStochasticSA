@@ -242,6 +242,9 @@ class TestDynamicSA(unittest.TestCase):
         while True:
             dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
+    def test_real(self):
+
+
 
 
 
