@@ -174,7 +174,7 @@ def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix
     # Update unvisited_nodes
     updated_child_nodes = visited_node_family.child_nodes
     unaccounted_nodes = {node for node in updated_child_nodes if node not in nodes}
-    unvisited_nodes.update(unaccounted_nodes)
+    unvisited_nodes.update(unaccounted_nodes) # TODO: adds Node('1.1', 200) and Node('1.1', 600) as two seperate nodes
     # Update dynamic_distance_matrix
     nodes = dynamic_node_list.get_all_nodes()
     dynamic_distance_matrix.update(nodes)
@@ -317,6 +317,7 @@ def reconcile_expected_and_actual_demand(current_tours: list[list[str]], dynamic
 
         # Based on the constellation of expected and actual demand, those tours that include the first and/or last node of the visited node family may have become infeasible.
         # The capacity constraint must be checked against the tours that include the first and/or last child nodes of the visited node family
+        nodes = dynamic_node_list.get_all_nodes()
         current_tours, original_tours, visited_node_family, unvisited_nodes, current_traversal_states = check_vehicle_capacity_constraint_of_tours(current_tours, original_tours,
                                                                                                                                                    visited_node_family,
                                                                                                                                                    unvisited_nodes,

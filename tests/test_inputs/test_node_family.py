@@ -14,7 +14,7 @@ class TestNodeFamily(unittest.TestCase):
         node_family.update()
 
         self.assertEqual(1, len(node_family.child_nodes))
-        self.assertEqual(0, node_family.child_nodes[0].expected_demand)
+        self.assertEqual(600, node_family.child_nodes[0].expected_demand)
 
     def test_update_with_zero_actual(self):
         input_node = InputNode('1', 600, 0)

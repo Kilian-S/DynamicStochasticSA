@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 import copy
-
 from dynamic_behaviour import *
 from global_parameters import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
@@ -208,7 +207,8 @@ class TestDynamicSA(unittest.TestCase):
             [10, 0]
         ])
 
-        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
+        while True:
+            dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
     def test_single_node_high_expected_low_actual_demand(self):
         initial_temp = 10
