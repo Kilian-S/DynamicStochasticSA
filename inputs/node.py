@@ -19,10 +19,12 @@ class InputNode(Node):
         return f"Node {self.id}, Demand: {self.expected_demand}, Actual Demand: {self.actual_demand}"
 
 
+def create_nodes(filename: str, sheet_name: str):
+    workbook = load_workbook(filename=filename)
 
-def create_nodes(f):
-    workbook = load_workbook(filename=f)
-    sheet = workbook.active
+    # Use the provided sheet name instead of the active sheet
+    sheet = workbook[sheet_name]
+
     nodes = []
 
     for row in range(2, sheet.max_row + 1):
@@ -30,7 +32,12 @@ def create_nodes(f):
         demand = sheet.cell(row=row, column=3).value
 
         # Create a Location object and append it to the list
-        node = Node(id, demand)
+        # TODO: Add stochasticity
+        node = InputNode(str(id), demand, demand)
         nodes.append(node)
 
     return nodes
+
+
+# nodes = create_nodes('distances.xlsx', 'Sheet1')
+# print(nodes)

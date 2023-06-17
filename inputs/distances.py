@@ -1,4 +1,5 @@
 import googlemaps
+import numpy as np
 import openpyxl
 from openpyxl import load_workbook
 
@@ -79,15 +80,32 @@ def make_symmetric(matrix: list[list[int]]):
     return matrix
 
 
-def create_symmetric_distance_matrix(input_doc: str, output_doc: str, output_sheet: str):
-    locations = create_locations(input_doc)
+def create_symmetric_distance_matrix(input_file: str, output_file: str, output_sheet: str):
+    locations = create_locations(input_file)
     matrix = create_distance_matrix(locations)
     matrix = make_symmetric(matrix)
-    write_distance_matrix_to_excel(matrix, output_doc, output_sheet)
+    write_distance_matrix_to_excel(matrix, output_file, output_sheet)
 
 
-create_symmetric_distance_matrix("distances.xlsx", "distances.xlsx", "Sheet2")
+def read_in_distance_matrix(input_file: str, input_sheet: str, topleft: str, bottomright: str):
+    # Load the workbook
+    workbook = load_workbook(filename=input_file, read_only=True)
 
+    # Select the specified sheet
+    sheet = workbook[input_sheet]
+
+    # Select the specified range of cells
+    cell_range = sheet[topleft:bottomright]
+
+    # Read the values of the cells into a nested list (distance matrix)
+    distance_matrix = [[cell.value for cell in row] for row in cell_range]
+    distance_matrix = np.array(distance_matrix)
+
+    return distance_matrix
+
+
+#create_symmetric_distance_matrix("distances.xlsx", "distances.xlsx", "Sheet2")
+#matrix = read_in_distance_matrix("distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
 
 
 

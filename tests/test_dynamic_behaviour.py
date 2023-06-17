@@ -3,9 +3,10 @@ import numpy as np
 import copy
 from dynamic_behaviour import *
 from global_parameters import *
+from inputs.distances import read_in_distance_matrix
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
 from inputs.dynamic_nodes_list import DynamicNodeList
-from inputs.node import Node
+from inputs.node import Node, create_nodes
 from inputs.node_family import NodeFamily
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
 from inputs.node import InputNode
@@ -243,8 +244,16 @@ class TestDynamicSA(unittest.TestCase):
             dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
     def test_real(self):
+        initial_temp = 10
+        iterations = 100
+        utilisation_target = 0.9
+        vehicle_capacity = 2000
 
+        nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
 
+        distance_matrix = read_in_distance_matrix('../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+
+        dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
 
 
