@@ -144,7 +144,7 @@ class TestReconcileCurrentAndOriginalTours(unittest.TestCase):
 class TestDynamicSA(unittest.TestCase):
     def test_simple(self):
         initial_temp = 10
-        iterations = 5
+        iterations = 10
         utilisation_target = 0.9
         vehicle_capacity = 600
         nodes = [InputNode('0', 0, 0), InputNode('1', 1000, 10), InputNode('2', 400, 3300), InputNode('3', 700, 1000), InputNode('4', 200, 3000)]
@@ -244,8 +244,8 @@ class TestDynamicSA(unittest.TestCase):
             dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
     def test_real(self):
-        initial_temp = 10
-        iterations = 100
+        initial_temp = 100
+        iterations = 1000
         utilisation_target = 0.9
         vehicle_capacity = 2000
 

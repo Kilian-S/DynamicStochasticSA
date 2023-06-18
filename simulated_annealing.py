@@ -160,22 +160,22 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
-            if candidate_tours_value <= current_tours_value:
+            if candidate_tours_value <= current_tours_value or 1:
                 # Update new best tour
                 tours, best_objective_function_value = candidate_tours, candidate_tours_value
                 print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
 
-                # TODO: De-indent every line below this point and set it to a LESS
-                # Possible acceptance based on Metropolis criterion
-                difference = candidate_tours_value - current_tours_value
-                t = initial_temperature / float(i + 1)
+            # TODO: De-indent every line below this point and set it to a LESS
+            # Possible acceptance based on Metropolis criterion
+            difference = candidate_tours_value - current_tours_value
+            t = initial_temperature / float(i + 1)
 
-                metropolis = exp(-difference / t)
+            metropolis = exp(-difference / t)
 
-                if difference < 0 or rand() < metropolis:
-                    current_tours, current_tours_value = candidate_tours, candidate_tours_value
+            if difference < 0 or rand() < metropolis:
+                current_tours, current_tours_value = candidate_tours, candidate_tours_value
 
-                i += 1
+            i += 1
         else:
             continue
 
@@ -232,6 +232,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
     i = 0
 
     while i < iterations:
+
+
         # Randomly select an index of the tours. If the tour is completely locked, select a new index until this is not the case
         # TODO: should random extraction be dependent on number of tours or on number of nodes of a tour (normalise probability by number of non-depot nodes)? insertion?
         while True:
@@ -280,28 +282,29 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         if tmp - len(candidate_tours):
             del candidate_traversal_states[-1]
 
+        candidate_lock_indices = determine_lock_indices(candidate_traversal_states)
+
         if is_feasible(candidate_tours, nodes, vehicle_capacity):
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
-            if candidate_tours_value <= current_tours_value:
+            if candidate_tours_value <= current_tours_value or 1:
                 # Update new best tour
                 tours, best_objective_function_value, traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
-                current_lock_indices = determine_lock_indices(candidate_traversal_states)
                 print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
-                # TODO: De-indent every line below this point and set it to a LESS
-                # Possible acceptance based on Metropolis criterion
-                difference = candidate_tours_value - current_tours_value
-                t = initial_temperature / float(i + 1)
+            # TODO: De-indent every line below this point and set it to a LESS
+            # Possible acceptance based on Metropolis criterion
+            difference = candidate_tours_value - current_tours_value
+            t = initial_temperature / float(i + 1)
 
-                metropolis = exp(-difference / t)
+            metropolis = exp(-difference / t)
 
-                if difference < 0 or rand() < metropolis:
-                    current_tours, current_tours_value, current_traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
-                    current_lock_indices = determine_lock_indices(candidate_traversal_states)
+            if difference < 0 or rand() < metropolis:
+                current_tours, current_tours_value, current_traversal_states, current_lock_indices = candidate_tours, candidate_tours_value, candidate_traversal_states, \
+                                                                                                     candidate_lock_indices
 
-                i += 1
+            i += 1
         else:
             continue
 

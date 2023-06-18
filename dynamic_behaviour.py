@@ -104,8 +104,11 @@ def initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
 
 def initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective, vehicle_capacity: int):
     current_tours = create_initial_solution(nodes)
+    print(f'Initial Solu.   Distance: {objective(current_tours, dynamic_distance_matrix)}    Tours: {current_tours}\n')
+
     current_tours_value, current_tours = simulated_annealing(current_tours, nodes, dynamic_distance_matrix, objective, initial_temperature, iterations, vehicle_capacity)
     current_traversal_states = [['0'] for _ in current_tours]
+
     return current_tours_value, current_tours, current_traversal_states
 
 
@@ -470,6 +473,8 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
             # Add non-original tours to original_tours; either if the expected tour demand is >=? vehicle capacity, or if all other original tours are finished
             update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
+
+    print(f'Final Solution.   Distance: {current_tours_value}    Tours: {current_tours}\n\n')
 
 
 #dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)

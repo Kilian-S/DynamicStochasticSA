@@ -1,6 +1,9 @@
 import unittest
 
-from simulated_annealing import create_boolean_matrix
+import numpy as np
+
+from inputs.node import Node
+from simulated_annealing import create_boolean_matrix, simulated_annealing
 
 
 class TestCreateBooleanMatrix(unittest.TestCase):
@@ -20,6 +23,8 @@ class TestCreateBooleanMatrix(unittest.TestCase):
         matrix = create_boolean_matrix(tours)
 
         print(matrix)
+
+
 
 
 
