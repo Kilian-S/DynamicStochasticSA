@@ -13,6 +13,9 @@ class Location:
         self.latitude = latitude
         self.longitude = longitude
 
+    def __repr__(self):
+        return f"({self.latitude}, {self.longitude}: {self.name}"
+
 
 def create_locations(filename: str):
     workbook = load_workbook(filename=filename)
@@ -102,6 +105,17 @@ def read_in_distance_matrix(input_file: str, input_sheet: str, topleft: str, bot
     distance_matrix = np.array(distance_matrix)
 
     return distance_matrix
+
+
+def normalise_geo_coordinates(input_file: str, new_origin: tuple):
+    locations = create_locations(input_file)
+
+    origin_latitude, origin_longitude = new_origin
+    for location in locations:
+        location.latitude = round(location.latitude - origin_latitude, 6)
+        location.longitude = round(location.longitude - origin_longitude, 6)
+
+    return locations
 
 
 #create_symmetric_distance_matrix("distances.xlsx", "distances.xlsx", "Sheet2")

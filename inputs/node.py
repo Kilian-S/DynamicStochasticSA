@@ -1,4 +1,5 @@
 from openpyxl import load_workbook
+from inputs.distances import create_locations
 
 
 class Node:
