@@ -160,12 +160,11 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
-            if candidate_tours_value <= current_tours_value or 1:
+            if candidate_tours_value <= current_tours_value:
                 # Update new best tour
                 tours, best_objective_function_value = candidate_tours, candidate_tours_value
                 print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
 
-            # TODO: De-indent every line below this point and set it to a LESS
             # Possible acceptance based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
             t = initial_temperature / float(i + 1)
@@ -288,12 +287,11 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             candidate_tours_value = objective(candidate_tours, distance_matrix)
 
             # Should this be a LESS or LESSEQUAL?
-            if candidate_tours_value <= current_tours_value or 1:
+            if candidate_tours_value <= current_tours_value:
                 # Update new best tour
                 tours, best_objective_function_value, traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
                 print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
-            # TODO: De-indent every line below this point and set it to a LESS
             # Possible acceptance based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
             t = initial_temperature / float(i + 1)
