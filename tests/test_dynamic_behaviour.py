@@ -1,14 +1,8 @@
 import unittest
-import numpy as np
-import copy
 from dynamic_behaviour import *
-from global_parameters import *
 from inputs.distances import read_in_distance_matrix
-from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
-from inputs.dynamic_nodes_list import DynamicNodeList
 from inputs.node import Node, create_nodes
-from inputs.node_family import NodeFamily
-from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints
+from simulated_annealing import objective
 from inputs.node import InputNode
 
 

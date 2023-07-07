@@ -1,9 +1,9 @@
 import copy
+import numpy as np
 from errors.errors import IncorrectReconciliationError, NodeNotFoundError
-from global_parameters import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
 from inputs.dynamic_nodes_list import DynamicNodeList
-from inputs.node import Node
+from inputs.node import Node, InputNode
 from inputs.node_family import NodeFamily
 from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints, is_within_vehicle_capacity
 
@@ -475,6 +475,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
 
     print(f'Final Solution.   Distance: {current_tours_value}    Tours: {current_tours}\n\n')
+    return current_tours_value
 
 
 #dynamic_sa(NODES, SYM_DISTANCE_MATRIX, objective, INITIAL_TEMP, ITERATIONS, VEHICLE_CAPACITY, UTILISATION_TARGET)

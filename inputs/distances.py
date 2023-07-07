@@ -108,6 +108,12 @@ def read_in_distance_matrix(input_file: str, input_sheet: str, topleft: str, bot
 
 
 def normalise_geo_coordinates(input_file: str, new_origin: tuple):
+    """
+
+    :param input_file: Input file name
+    :param new_origin: a tuple of latitude and longitude that acts as the new origin of the coordinate system.
+    :return: List of location objects with new latitude and longitude values.
+    """
     locations = create_locations(input_file)
 
     origin_latitude, origin_longitude = new_origin
@@ -116,12 +122,3 @@ def normalise_geo_coordinates(input_file: str, new_origin: tuple):
         location.longitude = round(location.longitude - origin_longitude, 6)
 
     return locations
-
-
-#create_symmetric_distance_matrix("distances.xlsx", "distances.xlsx", "Sheet2")
-#matrix = read_in_distance_matrix("distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
-
-
-
-
-
