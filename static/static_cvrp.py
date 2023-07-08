@@ -5,7 +5,20 @@ from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
 from inputs.node import create_nodes
 
 
-def create_feasibility_array(dictionary: dict, vehicle_capacity, num_nodes):
+def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes: int) -> list[int]:
+    """
+    Create a feasibility array based on a dictionary of node demands. The feasibility array makes any typical routing problem with a single depot solvable. It essentially removes
+    the single visitation constraint of the CVRP. The values
+
+    Args:
+        dictionary (dict): Dictionary mapping node indices to their respective demands.
+        vehicle_capacity (int): Capacity of the vehicle.
+        num_nodes (int): Total number of nodes.
+
+    Returns:
+        list[int]: Feasibility array indicating the number of full vehicle capacities required for each node.
+
+    """
     # Initialize feasibility_array with zeroes
     feasibility_array = [0] * num_nodes
 
@@ -19,19 +32,39 @@ def create_feasibility_array(dictionary: dict, vehicle_capacity, num_nodes):
     return feasibility_array
 
 
-def get_total_objective_function_value(solver_objective_function_value: float, feasibility_array: list[int], distance_dict: dict):
-    # iterate over the feasibility array
+def get_total_objective_function_value(solver_objective_function_value: float, feasibility_array: list[int], distance_dict: dict) -> float:
+    """
+    Calculate the total objective function value. Adds back the tours that were removed when making the routing problem feasible
+
+    Args:
+        solver_objective_function_value (float): The current value of the objective function from the solver.
+        feasibility_array (list[int]): An array indicating the number of additional tours required for each node.
+        distance_dict (dict): A dictionary containing distances between nodes.
+
+    Returns:
+        float: The updated total objective function value.
+
+    """
+    # Iterate over the feasibility array
     for node, num_tours in enumerate(feasibility_array):
-        # for each tour, add the round-trip distance from the depot to the node to the objective function value
+        # For each tour, add the round-trip distance from the depot to the node to the objective function value
         for _ in range(num_tours):
-            # adjust node index because feasibility_array is 0-based and node ids in distance_dict are 1-based
-            round_trip_distance = distance_dict[(0, node+1)] + distance_dict[(node+1, 0)]
+            # Adjust node index because feasibility_array is 0-based and node ids in distance_dict are 1-based
+            round_trip_distance = distance_dict[(0, node + 1)] + distance_dict[(node + 1, 0)]
             solver_objective_function_value += round_trip_distance
 
     return solver_objective_function_value
 
 
 def exact_algorithm():
+    """
+        Solve the Capacitated Vehicle Routing Problem (CVRP) using an exact algorithm. The solving process uses CPLEX solving engine. The code below is an adaptation of
+        implementation presented by Hernan Caceres (see 'README - Examples' for more details)
+
+        Returns:
+            float: The total objective function value.
+
+    """
     rnd = np.random
     rnd.seed(0)
 
@@ -92,10 +125,3 @@ def exact_algorithm():
     print(total_objective_function_value)
 
     return total_objective_function_value
-
-
-
-
-
-
-
