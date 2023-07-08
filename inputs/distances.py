@@ -3,7 +3,6 @@ import numpy as np
 import openpyxl
 from openpyxl import load_workbook
 
-
 GMAPS = googlemaps.Client(key='AIzaSyDDgmthv161tSfmFVmglxlEuJsxn7WnH9A')
 
 
@@ -17,7 +16,18 @@ class Location:
         return f"({self.latitude}, {self.longitude}: {self.name}"
 
 
-def create_locations(filename: str):
+def create_locations(filename: str) -> list[Location]:
+    """
+    Reads a workbook from the given filename, extracts location information from the active sheet,
+    and returns a list of Location objects.
+
+    Args:
+        filename (str): The name of the workbook file to load.
+
+    Returns:
+        list[Location]: A list of Location objects containing name, latitude, and longitude information.
+
+    """
     workbook = load_workbook(filename=filename)
     sheet = workbook.active
     locations = []
@@ -34,7 +44,18 @@ def create_locations(filename: str):
     return locations
 
 
-def create_distance_matrix(locations: list[Location], max_elements=10):
+def create_distance_matrix(locations: list[Location], max_elements: int = 10) -> list[list[int]]:
+    """
+    Creates a distance matrix based on the given list of locations.
+
+    Args:
+        locations (list[Location]): A list of Location objects.
+        max_elements (int): Maximum number of elements to process in a single API call. Defaults to 10.
+
+    Returns:
+        list[list[int]]: A 2D list representing the distance matrix.
+
+    """
     n = len(locations)
     distance_matrix = [[0] * n for _ in range(n)]
     coordinates = [(location.latitude, location.longitude) for location in locations]
@@ -54,7 +75,16 @@ def create_distance_matrix(locations: list[Location], max_elements=10):
     return distance_matrix
 
 
-def write_distance_matrix_to_excel(distance_matrix, file_name, sheet_name):
+def write_distance_matrix_to_excel(distance_matrix: list[list[int]], file_name: str, sheet_name: str):
+    """
+    Writes the distance matrix to an Excel file.
+
+    Args:
+        distance_matrix (list[list[int]]): The distance matrix to be written.
+        file_name (str): The name of the Excel file.
+        sheet_name (str): The name of the sheet to write the distance matrix.
+
+    """
     # Load the existing workbook
     workbook = openpyxl.load_workbook(file_name)
 
@@ -74,16 +104,35 @@ def write_distance_matrix_to_excel(distance_matrix, file_name, sheet_name):
     workbook.save(file_name)
 
 
-def make_symmetric(matrix: list[list[int]]):
+def make_symmetric(matrix: list[list[int]]) -> list[list[int]]:
+    """
+    Makes a square matrix symmetric by copying values from the upper triangular part to the lower triangular part.
+
+    Args:
+        matrix (list[list[int]]): The input matrix.
+
+    Returns:
+        list[list[int]]: The resulting symmetric matrix.
+
+    """
     n = len(matrix)
     for i in range(n):
-        for j in range(i+1, n):
-            # use the row value to update the column
+        for j in range(i + 1, n):
+            # Use the value from the upper triangular part to update the lower triangular part
             matrix[j][i] = matrix[i][j]
     return matrix
 
 
 def create_symmetric_distance_matrix(input_file: str, output_file: str, output_sheet: str):
+    """
+    Creates a symmetric distance matrix from input locations data and writes it to an Excel file.
+
+    Args:
+        input_file (str): The path to the input file containing location data.
+        output_file (str): The path to the output Excel file to write the distance matrix.
+        output_sheet (str): The name of the sheet in the output file to write the distance matrix.
+
+    """
     locations = create_locations(input_file)
     matrix = create_distance_matrix(locations)
     matrix = make_symmetric(matrix)
@@ -91,34 +140,42 @@ def create_symmetric_distance_matrix(input_file: str, output_file: str, output_s
 
 
 def read_in_distance_matrix(input_file: str, input_sheet: str, topleft: str, bottomright: str):
-    # Load the workbook
+    """
+    Reads a distance matrix from an Excel file.
+
+    Args:
+        input_file (str): The path to the input file.
+        input_sheet (str): The name of the sheet in the input file containing the distance matrix.
+        topleft (str): The cell reference of the top-left cell of the distance matrix range.
+        bottomright (str): The cell reference of the bottom-right cell of the distance matrix range.
+
+    Returns:
+        numpy.ndarray: The distance matrix as a numpy array.
+
+    """
     workbook = load_workbook(filename=input_file, read_only=True)
-
-    # Select the specified sheet
     sheet = workbook[input_sheet]
-
-    # Select the specified range of cells
     cell_range = sheet[topleft:bottomright]
-
-    # Read the values of the cells into a nested list (distance matrix)
     distance_matrix = [[cell.value for cell in row] for row in cell_range]
     distance_matrix = np.array(distance_matrix)
-
     return distance_matrix
 
 
 def normalise_geo_coordinates(input_file: str, new_origin: tuple):
     """
+    Normalizes the geographic coordinates of locations in an input file based on a new origin.
 
-    :param input_file: Input file name
-    :param new_origin: a tuple of latitude and longitude that acts as the new origin of the coordinate system.
-    :return: List of location objects with new latitude and longitude values.
+    Args:
+        input_file (str): The path to the input file.
+        new_origin (tuple): The coordinates (latitude, longitude) of the new origin.
+
+    Returns:
+        list[Location]: A list of Location objects with normalized coordinates.
+
     """
     locations = create_locations(input_file)
-
     origin_latitude, origin_longitude = new_origin
     for location in locations:
         location.latitude = round(location.latitude - origin_latitude, 6)
         location.longitude = round(location.longitude - origin_longitude, 6)
-
     return locations
