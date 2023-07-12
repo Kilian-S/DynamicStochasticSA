@@ -105,7 +105,7 @@ def update_string_in_nested_list(nested_list: list[list[str]], old: str, new: st
     return nested_list
 
 
-def initialise_dynamic_data_structures(distance_matrix: np.array, nodes: list[Node], vehicle_capacity: int) -> tuple:
+def initialise_dynamic_data_structures(distance_matrix: np.array, nodes: list[InputNode], vehicle_capacity: int) -> tuple:
     """
     Initialise the dynamic data structures required for the dynamic programming approach.
 

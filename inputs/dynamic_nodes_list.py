@@ -35,4 +35,7 @@ class DynamicNodeList:
             if node_family.node_family_id == node_family_id:
                 return node_family.child_nodes
 
+    def __repr__(self):
+        return f"DNL managing {len(self.node_families)} node families and assuming a vehicle capacity of {self.vehicle_capacity}"
+
 

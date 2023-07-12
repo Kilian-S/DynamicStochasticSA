@@ -39,8 +39,6 @@ class NodeFamily:
             remaining_node = Node(f'{self.node_family_id}.{trips_required + 1}', remaining_capacity)
             self.child_nodes.append(remaining_node)
 
-            self.child_nodes.append(remaining_node)
-
     def create_new_child_node(self, expected_demand: int):
         highest_id = max(int(node.id.split('.')[1]) for node in self.child_nodes)
         new_id = self.node_family_id + "." + str(highest_id + 1)

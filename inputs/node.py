@@ -7,6 +7,8 @@ class Node:
         self.id = id  # Node ID
         self.expected_demand = expected_demand  # Demand of the node
 
+    def __repr__(self):
+        return f"Node {self.id}, Demand: {self.expected_demand}"
 
 
 class InputNode(Node):
