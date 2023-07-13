@@ -1,4 +1,5 @@
 import copy
+import time
 import numpy as np
 from errors.errors import IncorrectReconciliationError, NodeNotFoundError
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_family_from_child_node
@@ -754,6 +755,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
     Returns:
         current_tours_value: The total distance of the best solution found by the algorithm.
     """
+    start_time = time.time()
 
     # Initialise node families, the dynamic node list that manages the node families, and the dynamic distance matrix
     dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
@@ -805,5 +807,9 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
             # Add non-original tours to original_tours; either if the expected tour demand is >= vehicle capacity, or if all other original tours are finished
             update_original_tours(original_tours, original_tour_positional_index, current_tours, current_traversal_states, nodes, vehicle_capacity, utilisation_target)
 
+    end_time = time.time()
+    execution_time = end_time - start_time
+
     print(f'Final Solution.   Distance: {current_tours_value}    Tours: {current_tours}\n\n')
+    print(f'Execution time: {execution_time}')
     return current_tours_value

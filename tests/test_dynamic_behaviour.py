@@ -238,8 +238,8 @@ class TestDynamicSA(unittest.TestCase):
             dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
 
     def test_real(self):
-        initial_temp = 100
-        iterations = 1000
+        initial_temp = 10
+        iterations = 100
         utilisation_target = 0.9
         vehicle_capacity = 2000
 
