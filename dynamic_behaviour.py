@@ -812,4 +812,4 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
     print(f'Final Solution.   Distance: {current_tours_value}    Tours: {current_tours}\n\n')
     print(f'Execution time: {execution_time}')
-    return current_tours_value
+    return current_tours_value, current_tours, execution_time

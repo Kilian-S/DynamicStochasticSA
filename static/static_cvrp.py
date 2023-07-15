@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from docplex.mp.model import Model
 from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
 from inputs.node import create_nodes
+import pandas as pd
 
 
 def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes: int) -> list[int]:
@@ -30,6 +31,40 @@ def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes:
         dictionary[node] = demand % vehicle_capacity
 
     return feasibility_array
+
+
+def tuples_to_tours(active_arcs):
+    # Create a dictionary storing successors for each node
+    successors = {}
+    for (i, j) in active_arcs:
+        if i in successors:
+            successors[i].append(j)
+        else:
+            successors[i] = [j]
+
+    # Initialize the tours
+    tours = []
+
+    # Start a new tour from each successor of 0 (depot)
+    for start_node in successors[0]:
+        current_node = start_node
+        tour = [0, current_node]  # Start the tour from the depot
+
+        # Continue until we reach back to the depot
+        while True:
+            next_node = successors[current_node][0]
+            if next_node == 0:
+                tour.append(0)
+                break
+            else:
+                tour.append(next_node)
+                successors[current_node].remove(next_node)
+                current_node = next_node
+
+        # Add the completed tour to the list of tours
+        tours.append(tour)
+
+    return tours
 
 
 def get_total_objective_function_value(solver_objective_function_value: float, feasibility_array: list[int], distance_dict: dict) -> float:
@@ -103,7 +138,7 @@ def exact_algorithm():
     mdl.add_constraints(mdl.sum(x[i, j] for i in V if i != j) == 1 for j in N)
     mdl.add_indicator_constraints(mdl.indicator_constraint(x[i, j], u[i] + q[j] == u[j]) for i, j in A if i != 0 and j != 0)
     mdl.add_constraints(u[i] >= q[i] for i in N)
-    mdl.parameters.timelimit = 500
+    #mdl.parameters.timelimit = 1
     solution = mdl.solve(log_output=True)
 
     print(solution)
@@ -121,7 +156,26 @@ def exact_algorithm():
 
     plt.show()
 
+    tours = tuples_to_tours(active_arcs)
+    print(tours)
+
     total_objective_function_value = get_total_objective_function_value(solution.objective_value, feasibility_array, c)
     print(total_objective_function_value)
 
-    return total_objective_function_value
+    df = pd.DataFrame({
+        'total_objective_function_value': [total_objective_function_value] * len(tours),
+        'tour': tours
+    })
+    df.to_excel('results_static.xlsx', index=False)
+
+    return total_objective_function_value, tours
+
+exact_algorithm()
+
+
+
+
+
+
+
+

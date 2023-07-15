@@ -19,8 +19,8 @@ def experiment_dynamic():
     utilisation_target = 0.9
     vehicle_capacity = 2000
 
-    nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
+    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
 
     for i in range(0, 5):
         result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
@@ -31,8 +31,8 @@ def experiment_dynamic():
     utilisation_target = 0.9
     vehicle_capacity = 2000
 
-    nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
+    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
 
     for i in range(0, 30):
         result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
@@ -43,8 +43,8 @@ def experiment_dynamic():
     utilisation_target = 0.9
     vehicle_capacity = 2000
 
-    nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
+    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
 
     for i in range(0, 30):
         result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)

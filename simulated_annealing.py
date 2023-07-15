@@ -319,7 +319,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature / float(i + 1)
+            t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
 
             power = -difference / t
             exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
@@ -491,7 +491,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature / float(i + 1)
+            t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
 
             power = -difference / t
             exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
@@ -524,4 +524,4 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 # t = initial_temperature - pow(i, a)
 
 # Sigmoid
-# t = initial_temperature / (1 + exp(0.3 * (i - 0.5 * iterations)))
+# t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
