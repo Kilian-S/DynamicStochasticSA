@@ -1,4 +1,3 @@
-import numpy as np
 import matplotlib.pyplot as plt
 from docplex.mp.model import Model
 from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
@@ -100,9 +99,6 @@ def exact_algorithm():
             float: The total objective function value.
 
     """
-    rnd = np.random
-    rnd.seed(0)
-
     n = 48
     Q = 2000
     N = [i for i in range(1, n + 1)]
@@ -124,7 +120,7 @@ def exact_algorithm():
     plt.show()
 
     A = [(i, j) for i in V for j in V]
-    distance_matrix = matrix = read_in_distance_matrix("../inputs/distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
+    distance_matrix = read_in_distance_matrix("../inputs/distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
     assert len(A) == distance_matrix.size, "Number of arcs and entries in distance matrix must be identical."
     c = {(i, j): distance_matrix[i][j] for i, j in A}
 
@@ -138,7 +134,7 @@ def exact_algorithm():
     mdl.add_constraints(mdl.sum(x[i, j] for i in V if i != j) == 1 for j in N)
     mdl.add_indicator_constraints(mdl.indicator_constraint(x[i, j], u[i] + q[j] == u[j]) for i, j in A if i != 0 and j != 0)
     mdl.add_constraints(u[i] >= q[i] for i in N)
-    #mdl.parameters.timelimit = 1
+    mdl.parameters.timelimit = 1
     solution = mdl.solve(log_output=True)
 
     print(solution)
@@ -163,10 +159,10 @@ def exact_algorithm():
     print(total_objective_function_value)
 
     df = pd.DataFrame({
-        'total_objective_function_value': [total_objective_function_value] * len(tours),
-        'tour': tours
+        'total_objective_function_value': [total_objective_function_value],
+        'tour': str(tours)
     })
-    df.to_excel('results_static.xlsx', index=False)
+    #df.to_excel('results_static.xlsx', index=False)
 
     return total_objective_function_value, tours
 

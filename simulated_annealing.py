@@ -117,6 +117,7 @@ def is_visitation(tours: list[list[any]], nodes: list[Node]) -> bool:
     # Check that each node (except for node 0) appears in the visited set
     for node in nodes:
         if node.id not in visited_nodes and node.id != '0':
+            print('vis')
             return False  # Node was not visited
 
     return True  # All nodes were visited exactly once
@@ -142,6 +143,7 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
 
     for node_id, count in visit_counts.items():
         if count != 1 and node_id != '0':
+            print('flow')
             return False
 
     return True
@@ -164,6 +166,7 @@ def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node], vehicl
     for tour in tours:
         tour_demand = sum(get_node_by_id(node_id, nodes).expected_demand for node_id in tour[1:-1])
         if tour_demand > vehicle_capacity and len(tour) > 3:
+            print('cap')
             return False
 
     return True

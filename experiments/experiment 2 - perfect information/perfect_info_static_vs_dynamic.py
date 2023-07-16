@@ -1,53 +1,95 @@
-from dynamic_behaviour import dynamic_sa
-from experiments.excel import write_to_excel
+import ast
+import pandas as pd
+from dynamic_behaviour import initialise_dynamic_data_structures
 from inputs.distances import read_in_distance_matrix
-from inputs.node import create_nodes
-from simulated_annealing import objective
-from static.static_cvrp import exact_algorithm
+from inputs.node import create_nodes, Node
+from simulated_annealing import is_feasible, objective
 
 
-# Static solution
-def experiment_static():
-    static = exact_algorithm()
-    write_to_excel('perfect_info_static_vs_dynamic.xlsx', 'static', 'a1', static)
+vehicle_capacity = 2000
+
+nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
+distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+
+dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
+
+df = pd.read_excel('results_static.xlsx')
+df['tours'] = df['tours'].apply(ast.literal_eval)
+tours = df['tours'].iloc[0]
 
 
-# Dynamic solutions
-def experiment_dynamic():
-    initial_temp = 10000
-    iterations = 10000
-    utilisation_target = 0.9
-    vehicle_capacity = 2000
+def check_static_feasible():
+    x = is_feasible(tours, nodes, vehicle_capacity)
+    z = objective(tours, dynamic_distance_matrix)
 
-    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    return x, z
 
-    for i in range(0, 5):
-        result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
-        write_to_excel('perfect_info_static_vs_dynamic.xlsx', 'dynamic (sigmoid)', f'a{i + 2}', result)
 
-    initial_temp = 10000
-    iterations = 1000
-    utilisation_target = 0.9
-    vehicle_capacity = 2000
+def get_total_oversupply(tours: list[list[str]], nodes: list[Node], vehicle_capacity: int) -> int:
+    # Create a dictionary for faster node access
+    nodes_dict = {str(node.id): node for node in nodes}
 
-    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    total_oversupply = 0
 
-    for i in range(0, 30):
-        result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
-        write_to_excel('perfect_info_static_vs_dynamic.xlsx', 'dynamic (sigmoid)', f'b{i + 2}', result)
+    for tour in tours:
+        # Iterate over each node in the tour
+        for node_id in tour:
+            # Ignore the depot
+            if node_id != '0':
+                # Get the node
+                node = nodes_dict[node_id]
 
-    initial_temp = 1000
-    iterations = 100
-    utilisation_target = 0.9
-    vehicle_capacity = 2000
+                # Calculate oversupply if there is any
+                oversupply = max(0, vehicle_capacity - node.expected_demand)
+                total_oversupply += oversupply
 
-    nodes = create_nodes('../../inputs/distances.xlsx', 'Sheet1')
-    distance_matrix = read_in_distance_matrix('../../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
+    return total_oversupply
 
-    for i in range(0, 30):
-        result = dynamic_sa(nodes, distance_matrix, objective, initial_temp, iterations, vehicle_capacity, utilisation_target)
-        write_to_excel('perfect_info_static_vs_dynamic.xlsx', 'dynamic (sigmoid)', f'c{i + 2}', result)
 
-experiment_dynamic()
+def get_total_undersupply(tours: list[list[str]], nodes: list[Node], vehicle_capacity: int) -> tuple:
+    # Create a dictionary for faster node access
+    nodes_dict = {str(node.id): node for node in nodes}
+
+    total_undersupply = 0
+    undersupplied_tours_count = 0
+
+    for tour in tours:
+        # Calculate total demand for the tour
+        tour_demand = sum(nodes_dict[node_id].expected_demand for node_id in tour if node_id != '0')
+
+        # If the total demand exceeds the vehicle capacity, it's an undersupply
+        if tour_demand > vehicle_capacity:
+            undersupply = tour_demand - vehicle_capacity
+            total_undersupply += undersupply
+            undersupplied_tours_count += 1
+
+    return total_undersupply, undersupplied_tours_count
+
+
+
+
+print(get_total_undersupply(tours, nodes, vehicle_capacity))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
