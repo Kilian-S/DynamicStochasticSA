@@ -117,7 +117,6 @@ def is_visitation(tours: list[list[any]], nodes: list[Node]) -> bool:
     # Check that each node (except for node 0) appears in the visited set
     for node in nodes:
         if node.id not in visited_nodes and node.id != '0':
-            print('vis')
             return False  # Node was not visited
 
     return True  # All nodes were visited exactly once
@@ -143,7 +142,6 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
 
     for node_id, count in visit_counts.items():
         if count != 1 and node_id != '0':
-            print('flow')
             return False
 
     return True
@@ -166,7 +164,6 @@ def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node], vehicl
     for tour in tours:
         tour_demand = sum(get_node_by_id(node_id, nodes).expected_demand for node_id in tour[1:-1])
         if tour_demand > vehicle_capacity and len(tour) > 3:
-            print('cap')
             return False
 
     return True
@@ -322,7 +319,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
+            t = initial_temperature - ((i * initial_temperature) / iterations)
 
             power = -difference / t
             exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
@@ -494,7 +491,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
+            t = initial_temperature - ((i * initial_temperature) / iterations)
 
             power = -difference / t
             exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0

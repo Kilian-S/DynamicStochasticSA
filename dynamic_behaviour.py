@@ -809,7 +809,7 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
 
     end_time = time.time()
     execution_time = end_time - start_time
-
+    nodes = dynamic_node_list.get_all_nodes()
     print(f'Final Solution.   Distance: {current_tours_value}    Tours: {current_tours}\n\n')
     print(f'Execution time: {execution_time}')
-    return current_tours_value, current_tours, execution_time
+    return current_tours_value, current_tours, execution_time, nodes

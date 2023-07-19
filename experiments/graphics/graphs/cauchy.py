@@ -75,4 +75,12 @@ def plot_cauchy_multiple_gammas(x0):
 location = 0
 gamma = 1
 
-plot_cauchy_multiple_gammas(0)
+plot_cauchy(location, gamma)
+
+
+
+
+
+
+
+

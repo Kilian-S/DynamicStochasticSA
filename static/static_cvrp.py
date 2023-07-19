@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from docplex.mp.model import Model
 from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
-from inputs.node import create_nodes
+from inputs.node import create_nodes_static
 import pandas as pd
 
 
@@ -103,7 +103,7 @@ def exact_algorithm():
     Q = 2000
     N = [i for i in range(1, n + 1)]
     V = [0] + N
-    nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
+    nodes = create_nodes_static('../inputs/distances.xlsx', 'Sheet1')
     q = {i: nodes[i].expected_demand for i in N}
     feasibility_array = create_feasibility_array(q, Q, n)
 

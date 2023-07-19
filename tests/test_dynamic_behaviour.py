@@ -1,7 +1,7 @@
 import unittest
 from dynamic_behaviour import *
 from inputs.distances import read_in_distance_matrix
-from inputs.node import Node, create_nodes
+from inputs.node import Node, create_nodes_static
 from simulated_annealing import objective
 from inputs.node import InputNode
 
@@ -243,7 +243,7 @@ class TestDynamicSA(unittest.TestCase):
         utilisation_target = 0.9
         vehicle_capacity = 2000
 
-        nodes = create_nodes('../inputs/distances.xlsx', 'Sheet1')
+        nodes = create_nodes_static('../inputs/distances.xlsx', 'Sheet1')
 
         distance_matrix = read_in_distance_matrix('../inputs/distances.xlsx', 'Distance matrix (districts)', 'B2', 'AX50')
 
