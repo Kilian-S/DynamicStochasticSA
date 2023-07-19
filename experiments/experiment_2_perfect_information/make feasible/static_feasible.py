@@ -2,7 +2,7 @@ import pandas as pd
 import ast
 
 # Read the excel file into a DataFrame
-df = pd.read_excel('results_static.xlsx')
+df = pd.read_excel('results_static_simple.xlsx')
 
 # This function transforms a list of lists of integers into a list of lists of strings.
 # If an integer is not equal to 0, a ".1" is appended to it.

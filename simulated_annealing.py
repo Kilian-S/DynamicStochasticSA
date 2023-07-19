@@ -1,8 +1,12 @@
 import copy
 import random
+import time
+
 import pandas as pd
 import numpy as np
 from numpy.random import rand
+from openpyxl import load_workbook
+
 from errors.errors import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix
 from inputs.node import Node
@@ -333,6 +337,12 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
             if difference < 0 or rand() < metropolis:
                 current_tours, current_tours_value = candidate_tours, candidate_tours_value
 
+                wb = load_workbook(filename='../Book1.xlsx')
+                ws = wb.active
+                data = [time.time(), current_tours_value]
+                ws.append(data)
+                wb.save('../Book1.xlsx')
+
             i += 1
         else:
             continue
@@ -505,6 +515,12 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
             if difference < 0 or rand() < metropolis:
                 current_tours, current_tours_value, current_traversal_states, current_lock_indices = candidate_tours, candidate_tours_value, candidate_traversal_states, \
                                                                                                      candidate_lock_indices
+
+                wb = load_workbook(filename='../Book1.xlsx')
+                ws = wb.active
+                data = [time.time(), current_tours_value]
+                ws.append(data)
+                wb.save('../Book1.xlsx')
 
             i += 1
         else:

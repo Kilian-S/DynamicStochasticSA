@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 from docplex.mp.model import Model
 from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
@@ -99,15 +101,17 @@ def exact_algorithm():
             float: The total objective function value.
 
     """
+    start_time = time.time()
+
     n = 48
     Q = 2000
     N = [i for i in range(1, n + 1)]
     V = [0] + N
-    nodes = create_nodes_static('../inputs/distances.xlsx', 'Sheet1')
+    nodes = create_nodes_static('C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx', 'Sheet1')
     q = {i: nodes[i].expected_demand for i in N}
     feasibility_array = create_feasibility_array(q, Q, n)
 
-    normalised_locations = normalise_geo_coordinates('../inputs/distances.xlsx', (37.05, 36.65))
+    normalised_locations = normalise_geo_coordinates('C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx', (37.05, 36.65))
     loc_x = [location.longitude for location in normalised_locations]
     loc_y = [location.latitude for location in normalised_locations]
 
@@ -117,10 +121,10 @@ def exact_algorithm():
     plt.plot(loc_x[0], loc_y[0], c='r', marker='s')
     plt.axis('equal')
 
-    plt.show()
+    #plt.show()
 
     A = [(i, j) for i in V for j in V]
-    distance_matrix = read_in_distance_matrix("../inputs/distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
+    distance_matrix = read_in_distance_matrix("C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
     assert len(A) == distance_matrix.size, "Number of arcs and entries in distance matrix must be identical."
     c = {(i, j): distance_matrix[i][j] for i, j in A}
 
@@ -134,7 +138,7 @@ def exact_algorithm():
     mdl.add_constraints(mdl.sum(x[i, j] for i in V if i != j) == 1 for j in N)
     mdl.add_indicator_constraints(mdl.indicator_constraint(x[i, j], u[i] + q[j] == u[j]) for i, j in A if i != 0 and j != 0)
     mdl.add_constraints(u[i] >= q[i] for i in N)
-    mdl.parameters.timelimit = 1
+    mdl.parameters.timelimit = 120
     solution = mdl.solve(log_output=True)
 
     print(solution)
@@ -150,7 +154,7 @@ def exact_algorithm():
     plt.plot(loc_x[0], loc_y[0], c='r', marker='s')
     plt.axis('equal')
 
-    plt.show()
+    #plt.show()
 
     tours = tuples_to_tours(active_arcs)
     print(tours)
@@ -158,13 +162,10 @@ def exact_algorithm():
     total_objective_function_value = get_total_objective_function_value(solution.objective_value, feasibility_array, c)
     print(total_objective_function_value)
 
-    df = pd.DataFrame({
-        'total_objective_function_value': [total_objective_function_value],
-        'tour': str(tours)
-    })
-    #df.to_excel('results_static.xlsx', index=False)
+    end_time = time.time()
+    execution_time = end_time - start_time
 
-    return total_objective_function_value, tours
+    return total_objective_function_value, tours, execution_time
 
 exact_algorithm()
 
