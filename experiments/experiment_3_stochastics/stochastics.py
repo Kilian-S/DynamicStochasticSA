@@ -1,6 +1,6 @@
 import ast
 from openpyxl import Workbook
-from dynamic_behaviour import dynamic_sa, get_tour_demand
+from dynamic_behaviour import dynamic_sa
 from inputs.distances import read_in_distance_matrix
 from inputs.dynamic_nodes_list import DynamicNodeList
 from inputs.node import create_nodes_cauchy_dependent_on_expected_demand, InputNode, create_nodes_static, create_nodes_cauchy, Node
@@ -113,7 +113,6 @@ def get_service_level(tours: list[list[str]], nodes: list[Node], vehicle_capacit
 
 
 def stochastic_nodes_to_excel(n: int, gamma_values: list[float], filename='../../inputs/distances.xlsx', sheetname='Sheet1'):
-    # Assuming create_nodes_static and create_nodes_cauchy are functions that return lists of InputNode objects
     static_nodes = create_nodes_static(filename, sheetname)
 
     workbook = Workbook()
@@ -283,19 +282,3 @@ def stochastic_nodes_dependent_on_expected_demand_experiment(trials: int, gamma_
 
             # Write the DataFrame to an Excel file
             df.to_excel(output_filename, index=False)
-
-
-stochastic_nodes_dependent_on_expected_demand_experiment(35, [0.15], 'results_stochastics_cauchy_gamma_factors_app.xlsx')
-
-
-
-
-
-
-
-
-
-
-
-
-

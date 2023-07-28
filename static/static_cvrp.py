@@ -1,10 +1,8 @@
 import time
-
 import matplotlib.pyplot as plt
 from docplex.mp.model import Model
 from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
 from inputs.node import create_nodes_static
-import pandas as pd
 
 
 def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes: int) -> list[int]:
@@ -138,6 +136,7 @@ def exact_algorithm():
     mdl.add_constraints(mdl.sum(x[i, j] for i in V if i != j) == 1 for j in N)
     mdl.add_indicator_constraints(mdl.indicator_constraint(x[i, j], u[i] + q[j] == u[j]) for i, j in A if i != 0 and j != 0)
     mdl.add_constraints(u[i] >= q[i] for i in N)
+    mdl.parameters.threads = 1
     mdl.parameters.timelimit = 120
     solution = mdl.solve(log_output=True)
 

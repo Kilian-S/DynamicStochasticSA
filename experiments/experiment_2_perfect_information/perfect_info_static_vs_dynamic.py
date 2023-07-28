@@ -1,5 +1,4 @@
 import pandas as pd
-
 from static.static_cvrp import exact_algorithm
 
 df = pd.DataFrame(columns=["Trial", "ObjValue", "Tours", "ExecutionTime"])
@@ -17,24 +16,4 @@ for i in range(trials):
     })
 
     df = pd.DataFrame(results)
-    df.to_excel('results_static.xlsx', index=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    df.to_excel('results_static_single_thread.xlsx', index=False)

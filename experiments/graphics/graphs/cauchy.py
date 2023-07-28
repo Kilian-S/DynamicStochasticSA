@@ -75,7 +75,7 @@ def plot_cauchy_multiple_gammas(x0):
 location = 0
 gamma = 1
 
-plot_cauchy(location, gamma)
+print(1-cauchy_cdf(10, 0, 1))
 
 
 
