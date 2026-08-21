@@ -1,9 +1,11 @@
-import googlemaps
+import os
 import numpy as np
 import openpyxl
 from openpyxl import load_workbook
 
-GMAPS = googlemaps.Client(key='AIzaSyDDgmthv161tSfmFVmglxlEuJsxn7WnH9A')
+# The name of the environment variable holding the Google Maps API key. The key is only needed to rebuild the distance matrix from geographic coordinates; the committed
+# distance matrix can be read without it
+API_KEY_ENVIRONMENT_VARIABLE = 'GOOGLE_MAPS_API_KEY'
 
 
 class Location:
@@ -14,6 +16,28 @@ class Location:
 
     def __repr__(self):
         return f"({self.latitude}, {self.longitude}: {self.name}"
+
+
+def create_google_maps_client():
+    """
+    Create a Google Maps client using the API key held in the environment. The googlemaps package is imported here rather than at module level so that the rest of this module
+    remains usable without it.
+
+    Returns:
+        googlemaps.Client: A client authenticated with the configured API key.
+
+    Raises:
+        RuntimeError: If the API key environment variable is not set.
+
+    """
+    api_key = os.environ.get(API_KEY_ENVIRONMENT_VARIABLE)
+
+    if not api_key:
+        raise RuntimeError(f"No Google Maps API key found. Set the {API_KEY_ENVIRONMENT_VARIABLE} environment variable to rebuild the distance matrix.")
+
+    import googlemaps
+
+    return googlemaps.Client(key=api_key)
 
 
 def create_locations(filename: str) -> list[Location]:
@@ -56,6 +80,8 @@ def create_distance_matrix(locations: list[Location], max_elements: int = 10) ->
         list[list[int]]: A 2D list representing the distance matrix.
 
     """
+    gmaps = create_google_maps_client()
+
     n = len(locations)
     distance_matrix = [[0] * n for _ in range(n)]
     coordinates = [(location.latitude, location.longitude) for location in locations]
@@ -66,7 +92,7 @@ def create_distance_matrix(locations: list[Location], max_elements: int = 10) ->
             destinations = coordinates[j:min(j + max_elements, n)]
 
             # Call the Distance Matrix API with the current set of origins and destinations
-            distance_matrix_response = GMAPS.distance_matrix(origins, destinations, mode="driving")
+            distance_matrix_response = gmaps.distance_matrix(origins, destinations, mode="driving")
 
             for k, row in enumerate(distance_matrix_response["rows"]):
                 for l, element in enumerate(row["elements"]):
@@ -158,19 +184,20 @@ def read_in_distance_matrix(input_file: str, input_sheet: str, topleft: str, bot
     cell_range = sheet[topleft:bottomright]
     distance_matrix = [[cell.value for cell in row] for row in cell_range]
     distance_matrix = np.array(distance_matrix)
+    workbook.close()
     return distance_matrix
 
 
 def normalise_geo_coordinates(input_file: str, new_origin: tuple):
     """
-    Normalizes the geographic coordinates of locations in an input file based on a new origin.
+    Normalises the geographic coordinates of locations in an input file based on a new origin.
 
     Args:
         input_file (str): The path to the input file.
         new_origin (tuple): The coordinates (latitude, longitude) of the new origin.
 
     Returns:
-        list[Location]: A list of Location objects with normalized coordinates.
+        list[Location]: A list of Location objects with normalised coordinates.
 
     """
     locations = create_locations(input_file)

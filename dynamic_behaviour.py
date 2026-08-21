@@ -6,7 +6,7 @@ from inputs.dynamic_distance_matrix import DynamicDistanceMatrix, get_node_famil
 from inputs.dynamic_nodes_list import DynamicNodeList
 from inputs.node import Node, InputNode
 from inputs.node_family import NodeFamily
-from simulated_annealing import objective, simulated_annealing, simulated_annealing_with_dynamic_constraints, is_within_vehicle_capacity
+from simulated_annealing import simulated_annealing, simulated_annealing_with_dynamic_constraints, is_within_vehicle_capacity, get_node_by_id
 
 
 def remove_empty_tours(tours: list[list[str]]) -> tuple[list[list[str]], list[int]]:
@@ -127,7 +127,8 @@ def initialise_dynamic_data_structures(distance_matrix: np.array, nodes: list[In
     return dynamic_distance_matrix, dynamic_node_list, node_families, nodes
 
 
-def initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective, vehicle_capacity: int) -> tuple:
+def initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective_function, vehicle_capacity: int,
+                                 cooling_schedule: str = 'linear') -> tuple:
     """
     Initialise the current variables for the SA algorithm.
 
@@ -136,16 +137,18 @@ def initialise_current_variables(dynamic_distance_matrix, initial_temperature, i
         initial_temperature: The initial temperature for the simulated annealing.
         iterations: The number of iterations for the simulated annealing.
         nodes: The list of nodes.
-        objective: The objective function.
+        objective_function: The objective function.
         vehicle_capacity: The vehicle capacity.
+        cooling_schedule: The name of the cooling schedule. Defaults to 'linear'.
 
     Returns:
         tuple: A tuple containing the initial objective function value, current tours, and current traversal states.
     """
     current_tours = create_initial_solution(nodes)
-    print(f'Initial Solu.   Distance: {objective(current_tours, dynamic_distance_matrix)}    Tours: {current_tours}\n')
+    print(f'Initial Solu.   Distance: {objective_function(current_tours, dynamic_distance_matrix)}    Tours: {current_tours}\n')
 
-    current_tours_value, current_tours = simulated_annealing(current_tours, nodes, dynamic_distance_matrix, objective, initial_temperature, iterations, vehicle_capacity)
+    current_tours_value, current_tours = simulated_annealing(current_tours, nodes, dynamic_distance_matrix, objective_function, initial_temperature, iterations,
+                                                             vehicle_capacity, cooling_schedule)
     current_traversal_states = [['0'] for _ in current_tours]
 
     return current_tours_value, current_tours, current_traversal_states
@@ -237,7 +240,8 @@ def get_tour_demand(tour: list[str], nodes: list[Node]):
 
     """
     node_demand_dict = {node.id: node.expected_demand for node in nodes}
-    total_demand = sum(node_demand_dict[node_id] for node_id in tour)
+    # A tour may briefly hold a node that the node list has not caught up with yet. Such a node contributes no demand rather than aborting the calculation
+    total_demand = sum(node_demand_dict.get(node_id, 0) for node_id in tour)
     return total_demand
 
 
@@ -314,7 +318,7 @@ def get_child_node_index(tour: list[str], visited_node_family: NodeFamily) -> in
             # Skip the depot node (ID = '0'), which doesn't have a "."
             continue
 
-    raise NodeNotFoundError
+    raise NodeNotFoundError(f"Tour {tour} contains no child node of node family {visited_node_family.node_family_id}")
 
 
 def reconcile_child_node_increase(dynamic_distance_matrix: DynamicDistanceMatrix, dynamic_node_list: DynamicNodeList, nodes: list[Node], unvisited_nodes: set[Node],
@@ -396,11 +400,14 @@ def reconcile_child_node_decrease(current_tours: list[list[str]], dynamic_distan
         current_tours = remove_string_from_nested_list(current_tours, deleted_node.id)
         original_tours = remove_string_from_nested_list(original_tours, deleted_node.id)
 
-    # Remove possible empty tours
+    # Remove possible empty tours. The first tours of current_tours are the original tours, in the same order, so every original tour that has emptied must also have emptied in
+    # current_tours at the same index. Beyond that prefix current_tours also holds tours that are still waiting at the depot, and those have no counterpart to agree with
+    number_of_original_tours = len(original_tours)
+
     current_tours, removed_current_tour_indices = remove_empty_tours(current_tours)
     original_tours, removed_original_tour_indices = remove_empty_tours(original_tours)
 
-    if removed_current_tour_indices != removed_original_tour_indices:
+    if removed_original_tour_indices != [index for index in removed_current_tour_indices if index < number_of_original_tours]:
         raise IncorrectReconciliationError
 
     current_traversal_states = remove_indices_from_list(current_traversal_states, removed_current_tour_indices)
@@ -454,8 +461,11 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
 
     """
 
-    is_in_original_tours = current_tours[i] in original_tours
+    # The tour need not sit at the same index in original_tours as it does in current_tours, so its position there is looked up rather than assumed
+    index_in_original_tours = original_tours.index(current_tours[i]) if current_tours[i] in original_tours else None
 
+    # A tour can only newly breach the capacity constraint because the demand of the family that was just visited changed, so it must hold one of that family's child nodes.
+    # If it does not, the tour bookkeeping has gone wrong somewhere upstream and get_child_node_index says so rather than this method guessing where to split
     child_node_index = get_child_node_index(current_tours[i], visited_node_family)
     shortfall = get_shortfall(current_tours[i], nodes, child_node_index, vehicle_capacity)
 
@@ -464,8 +474,8 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
         primary_tour, shortfall_tour = end_tour_early(current_tours, i, child_node_index)
         current_tours[i] = primary_tour
 
-        if is_in_original_tours:
-            original_tours[i] = primary_tour
+        if index_in_original_tours is not None:
+            original_tours[index_in_original_tours] = primary_tour
 
         # Update current_tours with shortfall tour. The shortfall tour is not included as an original_tour
         if len(shortfall_tour) >= 3:
@@ -480,12 +490,13 @@ def reconcile_tours_with_violated_capacity_constraint(current_tours: list[list[s
         primary_tour, shortfall_tour = end_tour_early(current_tours, i, child_node_index)
         current_tours[i] = primary_tour
 
-        # Decrease demand of the split node
-        n = visited_node_family.get_child_node_with_id(current_tours[i][child_node_index])
+        # Decrease demand of the split node. The node is looked up in the node list rather than in the family because both hold the same objects and the node list is never out
+        # of step with the tours
+        n = get_node_by_id(current_tours[i][child_node_index], nodes)
         n.expected_demand -= shortfall
 
-        if is_in_original_tours:
-            original_tours[i] = primary_tour
+        if index_in_original_tours is not None:
+            original_tours[index_in_original_tours] = primary_tour
 
         shortfall_tour.insert(1, shortfall_node.id)
         current_tours.append(shortfall_tour)
@@ -686,8 +697,9 @@ def update_original_tours(original_tours: list[list[str]], original_tour_positio
 
     """
 
-    # Add tours to original_tours that are close to full
-    for tour in current_tours:
+    # Add tours to original_tours that are close to full. The iteration runs over a snapshot of current_tours because add_current_tour_to_original_tours reorders that list in
+    # place, which would otherwise cause tours to be skipped and the positional correspondence with current_traversal_states to be lost
+    for tour in list(current_tours):
         if tour not in original_tours and get_tour_demand(tour, nodes) / vehicle_capacity >= utilisation_target:
             current_tours, current_traversal_states = add_current_tour_to_original_tours(current_tours, current_traversal_states, original_tours, tour)
 
@@ -724,7 +736,12 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     remaining_traversal_states = new_traversal_states.copy()
 
     for original_tour in original_tours:
-        index_in_remaining_tours = get_tour_id_with_node_id(remaining_tours, original_tour[1])
+        # Match on the first node of the original tour that is not the depot. The depot appears in every tour and so cannot identify one
+        anchor_node_id = next((node_id for node_id in original_tour if node_id != '0'), None)
+        index_in_remaining_tours = get_tour_id_with_node_id(remaining_tours, anchor_node_id) if anchor_node_id is not None else None
+
+        if index_in_remaining_tours is None:
+            raise IncorrectReconciliationError(f"No tour of the new solution corresponds to original tour {original_tour}")
 
         reordered_tours.append(remaining_tours.pop(index_in_remaining_tours))
         reordered_traversal_states.append(remaining_traversal_states.pop(index_in_remaining_tours))
@@ -738,7 +755,8 @@ def reconcile_new_and_current_sa_values(new_tours: list[list[str]], new_traversa
     return reordered_tours, reordered_traversal_states, original_tours
 
 
-def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int, vehicle_capacity: int, utilisation_target: float):
+def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective_function: callable, initial_temperature: int, iterations: int, vehicle_capacity: int,
+               utilisation_target: float, cooling_schedule: str = 'linear'):
     """
     This function performs a dynamic variant of Simulated Annealing (SA) to solve the Stochastic and Dynamic Capacitated Vehicle Routing Problem (SDCVRP) where the stochastic
     demand at each node is revealed dynamically.
@@ -746,14 +764,15 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
     Args:
         nodes (list[InputNode]): A list of nodes in the problem, where each node is an instance of the InputNode class.
         distance_matrix (np.array): A 2D numpy array representing the distance between each pair of nodes.
-        objective (callable): The objective function to be minimized in SA. This should be a function that takes a solution and returns a numerical score.
+        objective_function (callable): The objective function to be minimised in SA. This should be a function that takes a solution and returns a numerical score.
         initial_temperature (int): The starting temperature for the SA algorithm. High temperatures allow the algorithm to accept worse solutions to escape local minima.
         iterations (int): The number of iterations to perform in the SA algorithm.
         vehicle_capacity (int): The maximum capacity of each vehicle. This is a constraint in the VRP.
         utilisation_target (float): The target utilisation of each vehicle. This value should be between 0 and 1. The algorithm will attempt to ensure that the demand served by each vehicle is as close to this target as possible.
+        cooling_schedule (str, optional): The name of the cooling schedule used by SA. One of 'exponential', 'linear', 'concave' or 'sigmoid'. Defaults to 'linear'.
 
     Returns:
-        current_tours_value: The total distance of the best solution found by the algorithm.
+        tuple: A tuple containing the total distance of the best solution found, the tours of that solution, the execution time in seconds, and the final list of nodes.
     """
     start_time = time.time()
 
@@ -761,8 +780,8 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
     dynamic_distance_matrix, dynamic_node_list, node_families, nodes = initialise_dynamic_data_structures(distance_matrix, nodes, vehicle_capacity)
 
     # Create initial solution
-    current_tours_value, current_tours, current_traversal_states = initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes, objective,
-                                                                                                vehicle_capacity)
+    current_tours_value, current_tours, current_traversal_states = initialise_current_variables(dynamic_distance_matrix, initial_temperature, iterations, nodes,
+                                                                                                objective_function, vehicle_capacity, cooling_schedule)
 
     # All nodes are unvisited (we exclude the depot). We assume that there are at least as many trucks as there are routes in the first SA solution
     completed_original_tours, original_tour_positional_index, original_tours, unvisited_nodes = initialise_loop_visitation_variables(current_tours, nodes)
@@ -798,9 +817,9 @@ def dynamic_sa(nodes: list[InputNode], distance_matrix: np.array, objective: cal
         # Recalculate SA problem, if simulated annealing is possible (at least one unvisited node)
         if unvisited_nodes:
             dynamic_distance_matrix.update(nodes)
-            current_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective,
+            current_tours_value, new_tours, new_traversal_states = simulated_annealing_with_dynamic_constraints(current_tours, nodes, dynamic_distance_matrix, objective_function,
                                                                                                                 initial_temperature, iterations, vehicle_capacity,
-                                                                                                                current_traversal_states)
+                                                                                                                current_traversal_states, cooling_schedule)
 
             current_tours, current_traversal_states, original_tours = reconcile_new_and_current_sa_values(new_tours, new_traversal_states, original_tours)
 

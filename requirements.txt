@@ -1,0 +1,19 @@
+# Core solver — required to run dynamic_sa on the bundled instance
+numpy>=1.24
+pandas>=2.0
+openpyxl>=3.1
+
+# Experiments and figures
+matplotlib>=3.7
+scipy>=1.10
+folium>=0.14
+
+# Optional: exact CVRP baseline (static/static_cvrp.py).
+# Requires a local IBM CPLEX installation; the community edition is limited to
+# 1,000 variables and will not solve the 48-node instance.
+# docplex>=2.25
+
+# Optional: regenerating the distance matrix from geographic coordinates
+# (inputs/distances.py). Needs a Google Maps Distance Matrix API key supplied
+# via the GOOGLE_MAPS_API_KEY environment variable.
+# googlemaps>=4.10

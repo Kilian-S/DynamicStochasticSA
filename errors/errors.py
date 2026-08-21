@@ -24,3 +24,10 @@ class NodeNotFoundError(Exception):
     Indicates a node is not present in a list
     """
     pass
+
+
+class SearchStalledError(Exception):
+    """
+    Indicates that simulated annealing could not generate a feasible candidate solution and would otherwise search indefinitely
+    """
+    pass

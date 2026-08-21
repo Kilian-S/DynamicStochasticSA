@@ -4,17 +4,23 @@ from inputs.node import Node, InputNode
 
 class NodeFamily:
     """A NodeFamily pragmatically represents a physical demand node. However, some nodes must be visited more than once. Every visitation to a physical node requires the
-    creation of a child node. It follows, that the number of child nodes corresponds to: NumChildNodes = (ActualDemand % VehicleCapacity)+1. However, actual demand is only
+    creation of a child node. It follows, that the number of child nodes corresponds to: NumChildNodes = ceil(ActualDemand / VehicleCapacity). However, actual demand is only
     uncovered as the problem is solved. this causes the number of nodes in the problem instance to change dynamically."""
     def __init__(self, input_node: InputNode, vehicle_capacity: int, is_visited=False):
         """
-        Initialize a NodeFamily object.
+        Initialise a NodeFamily object.
 
         Args:
             input_node (InputNode): The input node object.
             vehicle_capacity (int): The vehicle capacity for this node family.
             is_visited (bool, optional): Indicates whether the node family has been visited. Defaults to False.
+
+        Raises:
+            ValueError: If the vehicle capacity is not positive.
         """
+        if vehicle_capacity <= 0:
+            raise ValueError("Vehicle capacity must be positive")
+
         self.node_family_id = input_node.id
         self.node_family_expected_demand = input_node.expected_demand
         self.node_family_actual_demand = input_node.actual_demand
@@ -39,8 +45,18 @@ class NodeFamily:
             remaining_node = Node(f'{self.node_family_id}.{trips_required + 1}', remaining_capacity)
             self.child_nodes.append(remaining_node)
 
-    def create_new_child_node(self, expected_demand: int):
-        highest_id = max(int(node.id.split('.')[1]) for node in self.child_nodes)
+    def create_new_child_node(self, expected_demand: int) -> Node:
+        """
+        Create an additional child node of this node family. This is required when a tour turns out to be over capacity and the excess demand must be served by a later visit.
+
+        :param expected_demand: The demand carried by the new child node.
+        :return: Node: The newly created child node.
+        """
+        # The depot never splits, so its single child node carries no "family.child" suffix and no new child node can be derived from it
+        if self.node_family_id == '0':
+            raise ValueError("The depot node family cannot be split into additional child nodes")
+
+        highest_id = max((int(node.id.split('.')[1]) for node in self.child_nodes), default=0)
         new_id = self.node_family_id + "." + str(highest_id + 1)
 
         new_node = Node(new_id, expected_demand)
@@ -56,7 +72,7 @@ class NodeFamily:
 
     def initialise(self):
         """
-        Initialize the NodeFamily object by creating child nodes based on the expected demand and vehicle capacity.
+        Initialise the NodeFamily object by creating child nodes based on the expected demand and vehicle capacity.
         """
         if self.node_family_expected_demand == 0:
             if self.node_family_id == '0':
@@ -64,6 +80,7 @@ class NodeFamily:
                 self.is_visited = True
             else:
                 self.child_nodes = [Node(f'{self.node_family_id}.{1}', 0)]
+            return
 
         expected_trips_required = self.node_family_expected_demand // self.vehicle_capacity
         remaining_capacity = self.node_family_expected_demand % self.vehicle_capacity

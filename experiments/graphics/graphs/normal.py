@@ -48,5 +48,5 @@ def normal_quantile(prob, mu, sigma):
     return norm.ppf(prob, mu, sigma)
 
 
-print(normal_cdf(1, 0, 1))
-
+if __name__ == '__main__':
+    print(normal_cdf(1, 0, 1))

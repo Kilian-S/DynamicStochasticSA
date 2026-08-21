@@ -45,17 +45,18 @@ def simulated_annealing_example(objective, bounds, n_iterations, step_size, temp
     return [best, best_eval]
 
 
-# seed the pseudorandom number generator
-seed(1)
-# define range for input
-bounds = asarray([[-5.0, 5.0]])
-# define the total iterations
-n_iterations = 1000
-# define the maximum step size
-step_size = 0.1
-# initial temperature
-temp = 10
-# perform the simulated annealing search
-best, score = simulated_annealing_example(objective_example, bounds, n_iterations, step_size, temp)
-print('Done!')
-print('f(%s) = %f' % (best, score))
+if __name__ == '__main__':
+    # seed the pseudorandom number generator
+    seed(1)
+    # define range for input
+    bounds = asarray([[-5.0, 5.0]])
+    # define the total iterations
+    n_iterations = 1000
+    # define the maximum step size
+    step_size = 0.1
+    # initial temperature
+    temp = 10
+    # perform the simulated annealing search
+    best, score = simulated_annealing_example(objective_example, bounds, n_iterations, step_size, temp)
+    print('Done!')
+    print('f(%s) = %f' % (best, score))

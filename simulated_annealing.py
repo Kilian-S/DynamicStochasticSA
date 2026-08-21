@@ -1,12 +1,93 @@
 import copy
+import math
 import random
 import pandas as pd
-import numpy as np
 from numpy.random import rand
 from errors.errors import *
 from inputs.dynamic_distance_matrix import DynamicDistanceMatrix
 from inputs.node import Node
 from numpy import exp
+
+# The number of consecutive infeasible candidates that may be generated before the search is considered stalled. A well-formed problem instance recovers within a handful of
+# attempts; exceeding this limit means no feasible neighbour exists and the search would otherwise spin indefinitely
+MAX_CONSECUTIVE_INFEASIBLE_CANDIDATES = 10000
+
+# Temperatures below this value are treated as this value so that the Metropolis exponent cannot divide by zero
+MINIMUM_TEMPERATURE = 1e-12
+
+
+def exponential_decay(initial_temperature: float, i: int, iterations: int) -> float:
+    """Cooling schedule that decays the temperature in proportion to the reciprocal of the iteration."""
+    return initial_temperature / float(i + 1)
+
+
+def linear_decay(initial_temperature: float, i: int, iterations: int) -> float:
+    """Cooling schedule that decays the temperature by a constant amount per iteration."""
+    return initial_temperature - ((i * initial_temperature) / iterations)
+
+
+def concave_decay(initial_temperature: float, i: int, iterations: int) -> float:
+    """Cooling schedule that holds the temperature high early on and then drops it away sharply."""
+    a = math.log(initial_temperature) / math.log(iterations)
+    return initial_temperature - pow(i, a)
+
+
+def sigmoid_decay(initial_temperature: float, i: int, iterations: int) -> float:
+    """Cooling schedule that decays the temperature slowly, then rapidly around the midpoint, then slowly again."""
+    return initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
+
+
+# The cooling schedules that were trialled. Linear decay produced the reported results and remains the default
+COOLING_SCHEDULES = {
+    'exponential': exponential_decay,
+    'linear': linear_decay,
+    'concave': concave_decay,
+    'sigmoid': sigmoid_decay,
+}
+
+
+def get_cooling_schedule(cooling_schedule: str) -> callable:
+    """
+        Look up a cooling schedule by name.
+
+        Args:
+            cooling_schedule (str): The name of the cooling schedule. One of 'exponential', 'linear', 'concave' or 'sigmoid'.
+
+        Returns:
+            callable: A function mapping (initial_temperature, i, iterations) to the temperature of iteration i.
+
+        Raises:
+            ValueError: If the named cooling schedule does not exist.
+
+    """
+    if cooling_schedule not in COOLING_SCHEDULES:
+        raise ValueError(f"Unknown cooling schedule '{cooling_schedule}'. Choose one of: {', '.join(sorted(COOLING_SCHEDULES))}")
+
+    return COOLING_SCHEDULES[cooling_schedule]
+
+
+def get_metropolis_criterion(difference: float, temperature: float) -> float:
+    """
+        Calculate the Metropolis acceptance probability of a candidate solution that is worse than the current solution.
+
+        Args:
+            difference (float): The amount by which the candidate solution is worse than the current solution.
+            temperature (float): The temperature of the current iteration.
+
+        Returns:
+            float: The probability with which the worse candidate solution should be accepted.
+
+    """
+    power = -difference / max(temperature, MINIMUM_TEMPERATURE)
+
+    exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
+    exp_power_limit_upper = 700  # Above this, exp(x) causes overflow
+    if power < exp_power_limit_lower:
+        power = exp_power_limit_lower
+    elif power > exp_power_limit_upper:
+        power = exp_power_limit_upper
+
+    return exp(power)
 
 
 def create_boolean_matrix(tours: list[list[any]]) -> pd.DataFrame:
@@ -23,7 +104,7 @@ def create_boolean_matrix(tours: list[list[any]]) -> pd.DataFrame:
     # Get all unique nodes
     nodes = sorted(list(set(node for tour in tours for node in tour)))
 
-    # Initialize the matrix with zeros
+    # Initialise the matrix with zeros
     matrix = pd.DataFrame(0, index=nodes, columns=nodes)
 
     # Populate the matrix
@@ -47,8 +128,19 @@ def objective(tours: list[list[any]], distance_matrix: DynamicDistanceMatrix):
         Returns:
             float: The calculated objective value.
 
+        Raises:
+            NodeNotFoundError: If the tours contain a node that the DDM does not know about.
+
     """
     x = create_boolean_matrix(tours)
+
+    unknown_nodes = [node for node in x.index if node not in distance_matrix.matrix.index]
+    if unknown_nodes:
+        raise NodeNotFoundError(f"Tours contain nodes that are absent from the distance matrix: {unknown_nodes}")
+
+    # Align the Boolean matrix with the DDM. Without this, any node that the DDM knows about but that no tour visits is introduced into the Hadamard product as NaN, which
+    # silently turns the entire objective value into NaN
+    x = x.reindex(index=distance_matrix.matrix.index, columns=distance_matrix.matrix.columns, fill_value=0)
 
     # Hadamard product
     objective_value = x.multiply(distance_matrix.matrix)
@@ -74,7 +166,7 @@ def get_node_by_id(node_id: str, nodes: list[Node]) -> Node:
     for node in nodes:
         if node.id == node_id:
             return node
-    raise NodeNotFoundError
+    raise NodeNotFoundError(f"No node with ID '{node_id}' exists")
 
 
 def is_single_family(nodes: list[Node]) -> bool:
@@ -101,7 +193,8 @@ def is_single_family(nodes: list[Node]) -> bool:
 
 def is_visitation(tours: list[list[any]], nodes: list[Node]) -> bool:
     """
-    Check if all nodes (except for node 0) in the given list of nodes are visited in the tours.
+    Check if all nodes (except for node 0) in the given list of nodes are visited in the tours. Whether they are visited exactly once is established separately by
+    is_flow_conservation.
 
     Args:
         tours (list[list[any]]): The list of tours.
@@ -119,7 +212,7 @@ def is_visitation(tours: list[list[any]], nodes: list[Node]) -> bool:
         if node.id not in visited_nodes and node.id != '0':
             return False  # Node was not visited
 
-    return True  # All nodes were visited exactly once
+    return True  # All nodes were visited
 
 
 def is_flow_conservation(tours: list[list[any]]) -> bool:
@@ -149,7 +242,8 @@ def is_flow_conservation(tours: list[list[any]]) -> bool:
 
 def is_within_vehicle_capacity(tours: list[list[any]], nodes: list[Node], vehicle_capacity: int) -> bool:
     """
-    Check if all tours satisfy the vehicle capacity constraint.
+    Check if all tours satisfy the vehicle capacity constraint. Tours serving a single node are exempt: a child node represents one vehicle load and cannot be divided any
+    further, so ending its tour early would achieve nothing.
 
     Args:
         tours (list[list[any]]): The list of tours.
@@ -247,8 +341,8 @@ def is_feasible(tours: list[list[any]], nodes: list[Node], vehicle_capacity: int
            starts_at_depot(tours) and ends_at_depot(tours)
 
 
-def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int, iterations: int,
-                        vehicle_capacity: int) -> tuple:
+def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matrix: DynamicDistanceMatrix, objective_function: callable, initial_temperature: int,
+                        iterations: int, vehicle_capacity: int, cooling_schedule: str = 'linear') -> tuple:
     """
     Apply the SA algorithm to optimise the SDCVRP. This method does not include dynamic constraints. As a result, it is used to determine the first SA solution in the iterative
     dynamic SA solution process.
@@ -256,17 +350,19 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
     Args:
         tours (list[list[any]]): The initial tours.
         nodes (list[Node]): The list of nodes.
-        distance_matrix (np.array): The distance matrix.
-        objective (callable): The objective function.
+        distance_matrix (DynamicDistanceMatrix): The distance matrix.
+        objective_function (callable): The objective function.
         initial_temperature (int): The initial temperature for simulated annealing.
         iterations (int): The number of iterations for simulated annealing.
         vehicle_capacity (int): The vehicle capacity.
+        cooling_schedule (str, optional): The name of the cooling schedule. Defaults to 'linear'.
 
     Returns:
         tuple: A tuple containing the best objective function value and the optimised tours.
 
     Raises:
         InfeasibilityError: If the initial tours are infeasible.
+        SearchStalledError: If no feasible candidate solution can be generated.
 
     """
 
@@ -274,7 +370,9 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
     if not is_feasible(tours, nodes, vehicle_capacity):
         raise InfeasibilityError
 
-    best_objective_function_value = objective(tours, distance_matrix)
+    cool = get_cooling_schedule(cooling_schedule)
+
+    best_objective_function_value = objective_function(tours, distance_matrix)
     current_tours, current_tours_value = tours, best_objective_function_value
 
     # If there are fewer than three nodes, SA optimisation will not work.
@@ -282,6 +380,7 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
         return best_objective_function_value, tours
 
     i = 0
+    consecutive_infeasible_candidates = 0
 
     while i < iterations:
         # Determine extraction index
@@ -294,8 +393,8 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
 
         # Get rid of empty tours
         candidate_tours = [candidate_tour for candidate_tour in candidate_tours if len(candidate_tour) > 2]
-        # Add an empty tour to the end of the list of tours
-        candidate_tours.append([0, 0])
+        # Add an empty tour to the end of the list of tours. This is what allows the search to split a tour in two, so its depots must be the string '0' like everywhere else
+        candidate_tours.append(['0', '0'])
 
         # Determine insertion index
         randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
@@ -310,31 +409,28 @@ def simulated_annealing(tours: list[list[any]], nodes: list[Node], distance_matr
 
         # Check if the newly created tour is feasible
         if is_feasible(candidate_tours, nodes, vehicle_capacity):
-            candidate_tours_value = objective(candidate_tours, distance_matrix)
+            consecutive_infeasible_candidates = 0
+            candidate_tours_value = objective_function(candidate_tours, distance_matrix)
 
-            if candidate_tours_value <= current_tours_value:
-                # Update new best tour
+            if candidate_tours_value <= best_objective_function_value:
+                # Update new best tour. This is compared against the best value found so far, not against the current value, because the current solution is allowed to drift
+                # above the best one whenever the Metropolis criterion accepts a worse candidate
                 tours, best_objective_function_value = candidate_tours, candidate_tours_value
                 print("Iteration: %d    Distance: %d    Tours: " % (i, candidate_tours_value), candidate_tours)
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature - ((i * initial_temperature) / iterations)
-
-            power = -difference / t
-            exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
-            exp_power_limit_upper = 700  # Above this, exp(x) causes overflow
-            if power < exp_power_limit_lower:
-                power = exp_power_limit_lower
-            elif power > exp_power_limit_upper:
-                power = exp_power_limit_upper
-            metropolis = exp(power)
+            t = cool(initial_temperature, i, iterations)
+            metropolis = get_metropolis_criterion(difference, t)
 
             if difference < 0 or rand() < metropolis:
                 current_tours, current_tours_value = candidate_tours, candidate_tours_value
 
             i += 1
         else:
+            consecutive_infeasible_candidates += 1
+            if consecutive_infeasible_candidates >= MAX_CONSECUTIVE_INFEASIBLE_CANDIDATES:
+                raise SearchStalledError(f"No feasible candidate solution found in {MAX_CONSECUTIVE_INFEASIBLE_CANDIDATES} consecutive attempts")
             continue
 
     print()
@@ -385,8 +481,33 @@ def get_lock_indices(traversal_states: list[list[any]]) -> list[int]:
     return lock_indices
 
 
-def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: list[Node], distance_matrix: np.array, objective: callable, initial_temperature: int,
-                                                 iterations: int, vehicle_capacity: int, traversal_states: list[list[any]]) -> tuple:
+def get_extraction_candidate_indices(tours: list[list[any]], lock_indices: list[int]) -> list[int]:
+    """
+    Determine the tours from which a node may still be extracted. A tour that has been traversed up to its final depot is locked in its entirety and cannot contribute a node.
+
+    :param tours: the current tours
+    :param lock_indices: the lock index of each tour
+    :return: list[int]: the indices of the tours holding at least one movable node
+    """
+
+    return [index for index, tour in enumerate(tours) if lock_indices[index] < len(tour) - 2]
+
+
+def get_insertion_candidate_indices(tours: list[list[any]], lock_indices: list[int]) -> list[int]:
+    """
+    Determine the tours into which a node may still be inserted. A tour that has been fully traversed offers no position that does not amount to time travel.
+
+    :param tours: the current tours
+    :param lock_indices: the lock index of each tour
+    :return: list[int]: the indices of the tours offering at least one valid insertion position
+    """
+
+    return [index for index, tour in enumerate(tours) if lock_indices[index] + 1 < len(tour)]
+
+
+def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: list[Node], distance_matrix: DynamicDistanceMatrix, objective_function: callable,
+                                                 initial_temperature: int, iterations: int, vehicle_capacity: int, traversal_states: list[list[any]],
+                                                 cooling_schedule: str = 'linear') -> tuple:
     """
         Performs the SA algorithm on the SDCVRP. This function includes dynamic constriants (traversal states). It, therefore, is able to handle the progression of trucks
         through the SDCVRP.
@@ -394,12 +515,13 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         Parameters:
         tours (list[list[any]]): The initial tours to start the optimization from.
         nodes (list[Node]): List of nodes in the problem. Each node represents a city or a point to visit.
-        distance_matrix (np.array): A 2D numpy array representing the distances between all pairs of nodes.
-        objective (callable): Function to calculate the objective value for a set of tours.
+        distance_matrix (DynamicDistanceMatrix): The DDM containing the distances between all pairs of nodes.
+        objective_function (callable): Function to calculate the objective value for a set of tours.
         initial_temperature (int): The initial temperature for the Simulated Annealing algorithm.
         iterations (int): The number of iterations to run the Simulated Annealing algorithm.
         vehicle_capacity (int): The maximum capacity that each vehicle can carry.
         traversal_states (list[list[any]]): The current state of traversal for each tour.
+        cooling_schedule (str, optional): The name of the cooling schedule. Defaults to 'linear'.
 
         Returns:
         best_objective_function_value (float): The best (lowest) value of the objective function found during the search.
@@ -409,6 +531,7 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         Raises:
         InfeasibilityError: If the provided tours are not feasible given the nodes and vehicle capacity.
         IncorrectTraversalError: If the traversal states are not a subsequence of the tours.
+        SearchStalledError: If no feasible candidate solution can be generated.
     """
 
     if not is_feasible(tours, nodes, vehicle_capacity):
@@ -417,25 +540,28 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
     if not is_traversal_subsequence_of_tours(tours, traversal_states):
         raise IncorrectTraversalError
 
-    best_objective_function_value = objective(tours, distance_matrix)
+    cool = get_cooling_schedule(cooling_schedule)
+
+    best_objective_function_value = objective_function(tours, distance_matrix)
     current_tours, current_tours_value = tours, best_objective_function_value
 
     current_traversal_states = traversal_states
     current_lock_indices = get_lock_indices(traversal_states)
 
-    # TODO: Add check if the traversal states even allow for simulated annealing to occur
     if len(nodes) <= 2:
-        return best_objective_function_value, tours
+        return best_objective_function_value, tours, traversal_states
 
     i = 0
+    consecutive_infeasible_candidates = 0
 
     while i < iterations:
 
-        # Randomly select a tour extraction index. If the tour is completely locked, select a new index until this is not the case.
-        while True:
-            randomly_selected_extraction_tour_index = random.randrange(len(current_tours))
-            if current_lock_indices[randomly_selected_extraction_tour_index] < len(current_tours[randomly_selected_extraction_tour_index]) - 2:
-                break
+        # Select a tour extraction index from those tours that are not completely locked. If every tour has been fully traversed there is nothing left to reoptimise
+        extraction_candidate_indices = get_extraction_candidate_indices(current_tours, current_lock_indices)
+        if not extraction_candidate_indices:
+            break
+
+        randomly_selected_extraction_tour_index = random.choice(extraction_candidate_indices)
 
         # Randomly select a node (NOT NODE INDEX!) from lock index onwards from the randomly selected tour
         random_node = random.choice([node for node in current_tours[randomly_selected_extraction_tour_index][current_lock_indices[randomly_selected_extraction_tour_index] + 1:]
@@ -459,11 +585,8 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
         # Update candidate_lock_indices
         candidate_lock_indices = get_lock_indices(candidate_traversal_states)
 
-        # Randomly select an index of the tours for inserting the randomly selected node. Continue selecting until an uncompleted tour is found.
-        while True:
-            randomly_selected_insertion_tour_index = random.randrange(len(candidate_tours))
-            if candidate_lock_indices[randomly_selected_insertion_tour_index] + 1 < len(candidate_tours[randomly_selected_insertion_tour_index]):
-                break
+        # Select an index of the tours for inserting the randomly selected node from those tours that are not yet complete
+        randomly_selected_insertion_tour_index = random.choice(get_insertion_candidate_indices(candidate_tours, candidate_lock_indices))
 
         if len(candidate_tours[randomly_selected_insertion_tour_index]) > 2:
             insertion_index = random.randint(candidate_lock_indices[randomly_selected_insertion_tour_index] + 1, len(candidate_tours[randomly_selected_insertion_tour_index]) - 1)
@@ -482,25 +605,19 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
         # Check if the newly created tour is feasible
         if is_feasible(candidate_tours, nodes, vehicle_capacity):
-            candidate_tours_value = objective(candidate_tours, distance_matrix)
+            consecutive_infeasible_candidates = 0
+            candidate_tours_value = objective_function(candidate_tours, distance_matrix)
 
-            if candidate_tours_value <= current_tours_value:
-                # Update new best tour
+            if candidate_tours_value <= best_objective_function_value:
+                # Update new best tour. This is compared against the best value found so far, not against the current value, because the current solution is allowed to drift
+                # above the best one whenever the Metropolis criterion accepts a worse candidate
                 tours, best_objective_function_value, traversal_states = candidate_tours, candidate_tours_value, candidate_traversal_states
                 print(f"Iteration: {i}    Distance: {candidate_tours_value}    Tours: {candidate_tours}    Traversal states: {candidate_traversal_states}")
 
             # Possible acceptance of a worse solution based on Metropolis criterion
             difference = candidate_tours_value - current_tours_value
-            t = initial_temperature - ((i * initial_temperature) / iterations)
-
-            power = -difference / t
-            exp_power_limit_lower = -20  # Below this, exp(x) is effectively 0
-            exp_power_limit_upper = 700  # Above this, exp(x) causes overflow
-            if power < exp_power_limit_lower:
-                power = exp_power_limit_lower
-            elif power > exp_power_limit_upper:
-                power = exp_power_limit_upper
-            metropolis = exp(power)
+            t = cool(initial_temperature, i, iterations)
+            metropolis = get_metropolis_criterion(difference, t)
 
             if difference < 0 or rand() < metropolis:
                 current_tours, current_tours_value, current_traversal_states, current_lock_indices = candidate_tours, candidate_tours_value, candidate_traversal_states, \
@@ -508,20 +625,10 @@ def simulated_annealing_with_dynamic_constraints(tours: list[list[any]], nodes: 
 
             i += 1
         else:
+            consecutive_infeasible_candidates += 1
+            if consecutive_infeasible_candidates >= MAX_CONSECUTIVE_INFEASIBLE_CANDIDATES:
+                raise SearchStalledError(f"No feasible candidate solution found in {MAX_CONSECUTIVE_INFEASIBLE_CANDIDATES} consecutive attempts")
             continue
 
     print()
     return best_objective_function_value, tours, traversal_states
-
-# Exponential decay
-# t = initial_temperature / float(i + 1)
-
-# Linear
-# t = initial_temperature - ((i * initial_temperature) / iterations)
-
-# Concave
-# a = (math.log(initial_temperature) / math.log(iterations))
-# t = initial_temperature - pow(i, a)
-
-# Sigmoid
-# t = initial_temperature / (1 + exp(0.1 * (i - 0.5 * iterations)))
