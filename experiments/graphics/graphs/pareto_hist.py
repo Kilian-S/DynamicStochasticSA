@@ -14,5 +14,6 @@ size = 10000
 samples = np.random.pareto(b, size) + scale
 
 # Plot histogram of the samples
-plt.hist(samples, bins=100)
-plt.show()
+if __name__ == '__main__':
+    plt.hist(samples, bins=100)
+    plt.show()

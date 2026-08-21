@@ -1,8 +1,13 @@
+from pathlib import Path
 import pandas as pd
 import folium
 
+# Data and output are resolved relative to this script rather than the working directory
+NODES_FILE = Path(__file__).resolve().parent.parent / "nodes_with_colors.csv"
+OUTPUT_FILE = Path(__file__).resolve().parent / "map.html"
+
 # Load the node data
-nodes = pd.read_csv("../nodes_with_colors.csv")
+nodes = pd.read_csv(NODES_FILE)
 
 # Create a map centered around Gaziantep
 m = folium.Map(location=[37.2, 36.85], zoom_start=10)  # Coordinates adjusted to center the map better
@@ -19,4 +24,4 @@ for idx, row in nodes.iterrows():
                   icon=folium.Icon(color=row["Color"])).add_to(m)
 
 # Save the map to an HTML file
-m.save("map.html")
+m.save(OUTPUT_FILE)

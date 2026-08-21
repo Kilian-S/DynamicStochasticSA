@@ -1,8 +1,15 @@
 import time
 import matplotlib.pyplot as plt
 from docplex.mp.model import Model
-from inputs.distances import read_in_distance_matrix, normalise_geo_coordinates
+from inputs.distances import normalise_geo_coordinates
+from inputs.instance import DISTANCES_FILE, NODES_SHEET, NUMBER_OF_NODES, VEHICLE_CAPACITY, read_instance_distance_matrix
 from inputs.node import create_nodes_static
+
+# The coordinates of the south-western corner of the Nurdağı district, used as the origin when plotting
+PLOT_ORIGIN = (37.05, 36.65)
+
+# The time the solver is allowed to spend on the model. The instance is not solved to proven optimality within this budget; the incumbent found is used as the benchmark
+SOLVER_TIME_LIMIT = 120
 
 
 def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes: int) -> list[int]:
@@ -19,7 +26,7 @@ def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes:
         list[int]: Feasibility array indicating the number of full vehicle capacities required for each node.
 
     """
-    # Initialize feasibility_array with zeroes
+    # Initialise feasibility_array with zeroes
     feasibility_array = [0] * num_nodes
 
     # Iterate over the dictionary
@@ -33,6 +40,16 @@ def create_feasibility_array(dictionary: dict, vehicle_capacity: int, num_nodes:
 
 
 def tuples_to_tours(active_arcs):
+    """
+    Convert the arcs selected by the solver into the tours they describe.
+
+    Args:
+        active_arcs: The (i, j) arcs that the solver set to one.
+
+    Returns:
+        list[list[int]]: The tours, each starting and ending at the depot.
+
+    """
     # Create a dictionary storing successors for each node
     successors = {}
     for (i, j) in active_arcs:
@@ -41,7 +58,7 @@ def tuples_to_tours(active_arcs):
         else:
             successors[i] = [j]
 
-    # Initialize the tours
+    # Initialise the tours
     tours = []
 
     # Start a new tour from each successor of 0 (depot)
@@ -90,39 +107,63 @@ def get_total_objective_function_value(solver_objective_function_value: float, f
     return solver_objective_function_value
 
 
-def exact_algorithm():
+def plot_solution(loc_x: list[float], loc_y: list[float], q: dict, nodes: list[int], active_arcs=None):
+    """
+    Plot the nodes of the problem instance and, if given, the arcs of a solution.
+
+    Args:
+        loc_x (list[float]): The normalised longitude of each node.
+        loc_y (list[float]): The normalised latitude of each node.
+        q (dict): The demand of each node.
+        nodes (list[int]): The demand nodes, excluding the depot.
+        active_arcs: The arcs of the solution to draw. Defaults to None, which plots the instance on its own.
+
+    """
+    plt.scatter(loc_x[1:], loc_y[1:], c='b')
+    for i in nodes:
+        plt.annotate('$q_%d=%d$' % (i, q[i]), (loc_x[i] + 2, loc_y[i]))
+
+    if active_arcs is not None:
+        for i, j in active_arcs:
+            plt.plot([loc_x[i], loc_x[j]], [loc_y[i], loc_y[j]], c='g', alpha=0.3)
+
+    plt.plot(loc_x[0], loc_y[0], c='r', marker='s')
+    plt.axis('equal')
+
+
+def exact_algorithm(show_plots: bool = False, log_output: bool = True) -> tuple:
     """
         Solve the Capacitated Vehicle Routing Problem (CVRP) using an exact algorithm. The solving process uses CPLEX solving engine. The code below is an adaptation of
         implementation presented by Hernan Caceres (see 'README - Examples' for more details)
 
+        Args:
+            show_plots (bool): Whether to display the instance and solution plots. Defaults to False so that the method can run unattended.
+            log_output (bool): Whether to let the solver write its log to stdout. Defaults to True.
+
         Returns:
-            float: The total objective function value.
+            tuple: A tuple containing the total objective function value, the tours and the execution time in seconds.
 
     """
     start_time = time.time()
 
-    n = 48
-    Q = 2000
+    n = NUMBER_OF_NODES
+    Q = VEHICLE_CAPACITY
     N = [i for i in range(1, n + 1)]
     V = [0] + N
-    nodes = create_nodes_static('C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx', 'Sheet1')
+    nodes = create_nodes_static(DISTANCES_FILE, NODES_SHEET)
     q = {i: nodes[i].expected_demand for i in N}
     feasibility_array = create_feasibility_array(q, Q, n)
 
-    normalised_locations = normalise_geo_coordinates('C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx', (37.05, 36.65))
+    normalised_locations = normalise_geo_coordinates(DISTANCES_FILE, PLOT_ORIGIN)
     loc_x = [location.longitude for location in normalised_locations]
     loc_y = [location.latitude for location in normalised_locations]
 
-    plt.scatter(loc_x[1:], loc_y[1:], c='b')
-    for i in N:
-        plt.annotate('$q_%d=%d$' % (i, q[i]), (loc_x[i] + 2, loc_y[i]))
-    plt.plot(loc_x[0], loc_y[0], c='r', marker='s')
-    plt.axis('equal')
-
-    #plt.show()
+    if show_plots:
+        plot_solution(loc_x, loc_y, q, N)
+        plt.show()
 
     A = [(i, j) for i in V for j in V]
-    distance_matrix = read_in_distance_matrix("C:\Kilian\TUM\TUM\Bachelor Thesis\Code\simulated annealing\inputs\distances.xlsx", "Distance matrix (districts)", "B2", "AX50")
+    distance_matrix = read_instance_distance_matrix()
     assert len(A) == distance_matrix.size, "Number of arcs and entries in distance matrix must be identical."
     c = {(i, j): distance_matrix[i][j] for i, j in A}
 
@@ -137,41 +178,30 @@ def exact_algorithm():
     mdl.add_indicator_constraints(mdl.indicator_constraint(x[i, j], u[i] + q[j] == u[j]) for i, j in A if i != 0 and j != 0)
     mdl.add_constraints(u[i] >= q[i] for i in N)
     mdl.parameters.threads = 1
-    mdl.parameters.timelimit = 120
-    solution = mdl.solve(log_output=True)
+    mdl.parameters.timelimit = SOLVER_TIME_LIMIT
+    solution = mdl.solve(log_output=log_output)
 
-    print(solution)
+    if solution is None:
+        raise RuntimeError(f"CPLEX found no feasible solution within {SOLVER_TIME_LIMIT} seconds")
 
-    solution.solve_status
     active_arcs = [a for a in A if x[a].solution_value > 0.9]
 
-    plt.scatter(loc_x[1:], loc_y[1:], c='b')
-    for i in N:
-        plt.annotate('$q_%d=%d$' % (i, q[i]), (loc_x[i] + 2, loc_y[i]))
-    for i, j in active_arcs:
-        plt.plot([loc_x[i], loc_x[j]], [loc_y[i], loc_y[j]], c='g', alpha=0.3)
-    plt.plot(loc_x[0], loc_y[0], c='r', marker='s')
-    plt.axis('equal')
-
-    #plt.show()
+    if show_plots:
+        plot_solution(loc_x, loc_y, q, N, active_arcs)
+        plt.show()
 
     tours = tuples_to_tours(active_arcs)
-    print(tours)
 
     total_objective_function_value = get_total_objective_function_value(solution.objective_value, feasibility_array, c)
-    print(total_objective_function_value)
 
     end_time = time.time()
     execution_time = end_time - start_time
 
     return total_objective_function_value, tours, execution_time
 
-exact_algorithm()
 
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    objective_function_value, solution_tours, elapsed = exact_algorithm()
+    print(f'Objective function value: {objective_function_value}')
+    print(f'Tours: {solution_tours}')
+    print(f'Execution time: {elapsed}')

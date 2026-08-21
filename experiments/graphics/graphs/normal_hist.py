@@ -12,5 +12,6 @@ size = 10000
 samples = np.random.normal(mu, sigma, size)
 
 # Plot histogram of the samples
-plt.hist(samples, bins=100)
-plt.show()
+if __name__ == '__main__':
+    plt.hist(samples, bins=100)
+    plt.show()

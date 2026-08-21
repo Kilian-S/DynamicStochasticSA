@@ -78,7 +78,6 @@ def plot_lognorm_multiple_sigmas(mu):
     plt.show()
 
 
-print(lognorm_cdf(2, 0, 0.5))
-plot_lognorm_multiple_sigmas(1)
-
-
+if __name__ == '__main__':
+    print(lognorm_cdf(2, 0, 0.5))
+    plot_lognorm_multiple_sigmas(1)

@@ -69,4 +69,5 @@ def plot_pareto_multiple_scales(scale):
 
 scale = 0
 
-plot_pareto_multiple_scales(scale)
+if __name__ == '__main__':
+    plot_pareto_multiple_scales(scale)

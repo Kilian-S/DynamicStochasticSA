@@ -75,12 +75,5 @@ def plot_cauchy_multiple_gammas(x0):
 location = 0
 gamma = 1
 
-print(1-cauchy_cdf(10, 0, 1))
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    print(1-cauchy_cdf(10, 0, 1))
