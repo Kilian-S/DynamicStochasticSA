@@ -5,6 +5,10 @@
 [![Tests](https://img.shields.io/badge/tests-46%20passing-brightgreen.svg)](./tests)
 [![Case study](https://img.shields.io/badge/case%20study-Nurda%C4%9F%C4%B1%2C%20T%C3%BCrkiye-orange.svg)](#case-study)
 
+A dynamic simulated annealing algorithm that routes relief vehicles when demand is revealed only on arrival, re-planning the remaining tours after every delivery. In a case study of food distribution after the 2023 Turkish-Syrian earthquake it held a 100% service level in every trial, while an exact solver planning on expected demand fell as low as 7.32%.
+
+*Bachelor's thesis, Technical University of Munich, graded 1.0.*
+
 This repository implements a newly developed Dynamic Simulated Annealing (DSA) metaheuristic algorithm to solve the Stochastic and Dynamic Capacitated Vehicle Routing Problem (SDCVRP). Demands, sampled from a probability distribution, are revealed as vehicles deliver goods from a central depot to distribution points. Following a delivery, the transportation network is reoptimised according to the newly acquired information. Dynamic adaptation of the problem instance makes the DSA particularly well-suited to humanitarian logistics problems.
 
 A case study on the distribution of food following the 2023 Turkish-Syrian earthquake is conducted to verify the performance of the algorithm. When compared in a deterministic setting, the new algorithm is inferior to an exact solution method. However, as demand becomes increasingly stochastic, it is the DSA that invariably outperforms the exact solution method.
